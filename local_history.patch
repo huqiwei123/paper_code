@@ -1,0 +1,24 @@
+Index: Vehicle.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/Vehicle.py b/Vehicle.py
+--- a/Vehicle.py	
++++ b/Vehicle.py	(date 1687767423841)
+@@ -71,11 +71,11 @@
+             if not enviroment.time_finished:
+                 # 先要获得锁condition,再在锁的作用域中调用wait
+                 with time_lock:
+-                    print(str(self.vehicle_no) + "11")
++                    print(str(self.vehicle_no) + ": 11")
+                     # 等待下一个时间离散点到达后发起通知
+                     time_lock.wait()
+-                    print(str(self.vehicle_no) + "12")
++                    print(str(self.vehicle_no) + ": 12")
+                     self.last_location = self.cur_location
+-                    print(str(self.vehicle_no) + "13")
++                    print(str(self.vehicle_no) + ": 13")
+                     self.cur_location = random.choice(all_location)
+-                    print(str(self.vehicle_no) + "14")
++                    print(str(self.vehicle_no) + ": 14")
