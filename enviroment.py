@@ -60,12 +60,9 @@ class Time:
             # 休眠时间步长
             time.sleep(time_step)
             self.__now = now
-            print(4)
             # 等待time_step完成后,发出时间系统信号,通知所有其他线程运行
             with time_lock:
-                print(5)
                 time_lock.notifyAll()
-                print(6)
 
         # 模拟时间已经结束,不发起通知,让所有其他等待线程阻塞
         with time_lock:

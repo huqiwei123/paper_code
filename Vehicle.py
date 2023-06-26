@@ -71,11 +71,7 @@ class Vehicle:
             if not enviroment.time_finished:
                 # 先要获得锁condition,再在锁的作用域中调用wait
                 with time_lock:
-                    print(str(self.vehicle_no) + ": 11")
                     # 等待下一个时间离散点到达后发起通知
                     time_lock.wait()
-                    print(str(self.vehicle_no) + ": 12")
                     self.last_location = self.cur_location
-                    print(str(self.vehicle_no) + ": 13")
                     self.cur_location = random.choice(all_location)
-                    print(str(self.vehicle_no) + ": 14")

@@ -39,12 +39,9 @@ class TestAddition:
         while True:
             with time_lock:
                 if not enviroment.time_finished:
-                    print(1)
                     # 等待时间系统到达下一个离散时间点时发起通知
                     time_lock.wait()
-                    print(2)
                     print(bs.vehicle_path[vehicle1.vehicle_no])
-                    print(3)
 
     # todo: 当前问题:时间设定为5s,BS每1s读取一次环境中的车辆当前路径,而在5s时间内所构建的路径序列中只有2个位置
     def test_BS_prediction(self):

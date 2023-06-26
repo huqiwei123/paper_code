@@ -145,11 +145,7 @@ class BS:
         while True:
             with time_lock:
                 if not enviroment.time_finished:
-                    print(7)
                     time_lock.wait()
-                    print(8)
                     # todo: 等待车辆位置改变后再去观察车辆,与Vehicle线程间存在同步关系
                     self.update_curlocation().add_curlocation_to_path().update_tree()
-                    print(9)
                     self.predict_nextlocation()
-                    print(10)
