@@ -8,6 +8,7 @@ usage: test
 """
 
 time_lock = enviroment.time_lock
+bs_lock = BS.bs_lock
 
 
 class TestAddition:
@@ -37,13 +38,13 @@ class TestAddition:
         vehicle2.run()
         bs.run()
         while True:
-            with time_lock:
+            with bs_lock:
                 if not enviroment.time_finished:
                     # 等待时间系统到达下一个离散时间点时发起通知
-                    time_lock.wait()
+                    bs_lock.wait()
                     print(bs.vehicle_path[vehicle1.vehicle_no])
 
-    # todo: 当前问题:时间设定为5s,BS每1s读取一次环境中的车辆当前路径,而在5s时间内所构建的路径序列中只有2个位置
+    # 2个车辆实例,利用600s构建树,然后再根据上一个位置和当前位置去预测车辆的下一个位置
     def test_BS_prediction(self):
         # 实例化一个环境时间
         time_system = enviroment.Time.get_time_system()
@@ -51,30 +52,24 @@ class TestAddition:
         # 获得全局唯一的bs实例
         bs = BS.BS.get_bs()
         bs.run()
-        # 注册vehicle1
-        vehicle1 = Vehicle.Vehicle()
-        vehicle1.register()
-        vehicle1.run()
-        # 注册vehicle2
-        vehicle2 = Vehicle.Vehicle()
-        vehicle2.register()
-        vehicle2.run()
+        vehicle_list = Vehicle.Vehicle.bulk_register(2)
+        for vehicle in vehicle_list:
+            vehicle.run()
         # 利用离散时间点的前面10s构建树
-        while time_system.now() < 100:
-            with time_lock:
-                # todo:与BS线程间存在同步关系,需要BS观察车辆并更新数据后,在读取
-                # question: 由于没有同步可能导致出现路径有时候多打一个或少打一个
-                time_lock.wait()
-                print(bs.vehicle_path[vehicle1.vehicle_no])
-                print(bs.vehicle_path[vehicle2.vehicle_no])
-        # PPM.print_tree_pattern(bs.vehicle_tree[vehicle1.vehicle_no].root)
-        # PPM.print_tree_pattern(bs.vehicle_tree[vehicle2.vehicle_no].root)
-        # print("vehicle1上一个位置: " + vehicle1.last_location)
-        # print("vehicle1当前位置 " + vehicle1.cur_location)
-        # print("vehicle2上一个位置 " + vehicle2.last_location)
-        # print("vehicle2当前位置 " + vehicle2.cur_location)
-        # print("预测结果为: ")
-        # print(bs.prediction_result)
+        while time_system.now() < 600:
+            with bs_lock:
+                # 在BS线程更新完数据后再去读取
+                bs_lock.wait()
+        for vehicle in vehicle_list:
+            print("车辆号为 " + str(vehicle.vehicle_no))
+            print("当前路径:", end=" ")
+            print(bs.vehicle_path[vehicle.vehicle_no])
+            print("当前树结构:")
+            PPM.print_tree_pattern(bs.vehicle_tree[vehicle.vehicle_no].root)
+            print("上一个位置: " + vehicle.last_location)
+            print("当前位置: " + vehicle.cur_location)
+            print("预测到的下一个位置: " + bs.prediction_result[vehicle.vehicle_no])
+            print("============================================================")
 
     def test_time_system(self):
         time_system = enviroment.Time.get_time_system()
@@ -92,6 +87,6 @@ class TestAddition:
 if __name__ == '__main__':
     test = TestAddition()
     # test.test_build_tree()
-    test.test_print_path()
-    # test.test_BS_prediction()
+    # test.test_print_path()
+    test.test_BS_prediction()
     # test.test_time_system()

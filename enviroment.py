@@ -8,7 +8,7 @@ time_lock = threading.Condition()
 time_step = 1
 
 # 定义总的模拟时间
-total_time = 100
+total_time = 900
 
 # 定义一个标志，用于通知其他线程模拟时间已经结束
 time_finished = False
