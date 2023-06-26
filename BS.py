@@ -21,6 +21,7 @@ class BS:
         vehicle_path (dict): store all vehicle's path to a dict
         vehicle_tree (dict): store all vehicle's tree according to path to a dict
         prediction_result (dict) : 预测结果
+        classification_result (dict) : 保存分簇结果
         update: 基站更新路径和树结构的线程
 
     Methods:
@@ -31,6 +32,7 @@ class BS:
         add_curlocation_to_path: 将所有注册车辆的当前位置加入到路径序列中
         update_tree: 当加入当前位置后,更新BS中所有车辆的树结构
         predict_nextlocation: 调用PPM算法预测所有注册车辆的下一个位置,并存储在预测结果的list中
+        classify: 调用PPM算法对预测结果进行分簇
         bs_thread: BS线程,每隔一段时间,观察注册车辆的当前位置,将当前位置加入到路径序列中,最后更新车辆的树结构
     """
     bs = None
@@ -54,6 +56,7 @@ class BS:
         self.vehicle_path = {}
         self.vehicle_tree = {}
         self.prediction_result = {}
+        self.classification_result = {}
         self.update = threading.Thread(target=self.bs_thread)
 
     def __str__(self):
@@ -137,6 +140,15 @@ class BS:
             result = PPM.Predictor.predictor(item)
             self.prediction_result[item.vehicle_no] = result
 
+    # 调用PPM算法对预测结果进行分簇
+    def classify(self):
+        """
+        调用PPM算法对预测结果进行分簇,并将结果赋值给属性classification_result
+        Returns: None
+
+        """
+        self.classification_result = PPM.Classifier.classifier()
+
     # 线程:每到达一个时间点将车辆当前路径加入到车辆对应的历史路径序列中,并更新树结构
     def bs_thread(self):
         """
@@ -148,10 +160,11 @@ class BS:
         while True:
             with vehicle_lock:
                 if not enviroment.time_finished:
-                    # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置
+                    # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置,再进行分簇
                     vehicle_lock.wait()
                     self.update_curlocation().add_curlocation_to_path().update_tree()
                     self.predict_nextlocation()
+                    self.classify()
                     Vehicle.Vehicle.thread_run_num = 0
                     with bs_lock:
                         # 通知需要读取BS数据的线程,等BS数据完成更新后,再去读取

@@ -157,6 +157,7 @@ class Classifier:
             else:
                 classify_result[key] = []
                 classify_result[key].append(each)
+        return classify_result
 
 
 # 读取路径序列，返回所有连续3个路径所构成的二维数组

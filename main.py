@@ -18,14 +18,17 @@ class TestAddition:
             test_print_path: 测试打印路径序列
             test_BS_prediction: 测试bs实例中根据所有车辆的路径树/上一个位置/当前位置预测车辆的下一个位置
             test_time_system: 测试时间系统
+            test_BS_classify: 测试车辆分簇方法
     """
 
+    # 测试利用路径序列构建路径树
     def test_build_tree(self):
         alist = ["l1", "l2", "l3", "l4", "l2", "l3", "l2", "l3"]
         tree = PPM.BuildTree()
         tree.createTree(alist)
         PPM.print_tree_pattern(tree.root)
 
+    # 测试打印路径序列
     def test_print_path(self):
         time_system = enviroment.Time.get_time_system()
         bs = BS.BS.get_bs()
@@ -71,6 +74,7 @@ class TestAddition:
             print("预测到的下一个位置: " + bs.prediction_result[vehicle.vehicle_no])
             print("============================================================")
 
+    # 测试时间系统
     def test_time_system(self):
         time_system = enviroment.Time.get_time_system()
         time_system.run()
@@ -82,11 +86,35 @@ class TestAddition:
                     time_lock.wait()
                     print(time_system.now())
 
+    # 测试车辆分簇方法
+    def test_BS_classify(self):
+        bs = BS.BS.get_bs()
+        time_system = enviroment.Time.get_time_system()
+        vehicle_list = Vehicle.Vehicle.bulk_register(300)
+        bs.run()
+        time_system.run()
+        for vehicle in vehicle_list:
+            vehicle.run()
+        while time_system.now() < 300:
+            pass
+        print("分簇结果为:")
+        test_result = {}
+        # 测试中,将值列表中的对象以车辆号代替
+        for key in bs.classification_result.keys():
+            test_result[key] = []
+            for vehicle in bs.classification_result[key]:
+                test_result[key].append(vehicle.vehicle_no)
+        for key in test_result:
+            print(key, end=" ")
+            print(":", end=" ")
+            print(test_result[key])
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     test = TestAddition()
     # test.test_build_tree()
     # test.test_print_path()
-    test.test_BS_prediction()
+    # test.test_BS_prediction()
     # test.test_time_system()
+    test.test_BS_classify()
