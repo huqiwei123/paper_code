@@ -3,8 +3,9 @@ import threading
 import BS
 import enviroment
 
-all_location = ["l1", "l2", "l3", "l4", "l5"]
+all_location = ["l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9", "l10"]
 time_lock = enviroment.time_lock
+vehicle_lock = threading.Condition()
 
 
 class Vehicle:
@@ -25,10 +26,13 @@ class Vehicle:
 
     """
     vehicle_no = 1
+    instance_num = 0
+    thread_run_num = 0
 
     def __init__(self):
         self.vehicle_no = Vehicle.vehicle_no
         Vehicle.vehicle_no += 1
+        Vehicle.instance_num += 1
         self.bs = None
         self.cur_location = random.choice(all_location)
         self.last_location = None
@@ -71,11 +75,12 @@ class Vehicle:
             if not enviroment.time_finished:
                 # 先要获得锁condition,再在锁的作用域中调用wait
                 with time_lock:
-                    print(str(self.vehicle_no) + ": 11")
-                    # 等待下一个时间离散点到达后发起通知
+                    # 等待下一个时间离散点到达后,所有车辆开始更新到下一个位置
                     time_lock.wait()
-                    print(str(self.vehicle_no) + ": 12")
                     self.last_location = self.cur_location
-                    print(str(self.vehicle_no) + ": 13")
                     self.cur_location = random.choice(all_location)
-                    print(str(self.vehicle_no) + ": 14")
+                    Vehicle.thread_run_num += 1
+                    # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
+                    if Vehicle.instance_num == Vehicle.thread_run_num:
+                        with vehicle_lock:
+                            vehicle_lock.notifyAll()

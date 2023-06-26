@@ -5,7 +5,10 @@ import PPM
 import threading
 import enviroment
 
+bs_lock = threading.Condition()
+
 time_lock = enviroment.time_lock
+vehicle_lock = Vehicle.vehicle_lock
 
 
 class BS:
@@ -143,13 +146,14 @@ class BS:
 
         """
         while True:
-            with time_lock:
+            with vehicle_lock:
                 if not enviroment.time_finished:
-                    print(7)
-                    time_lock.wait()
-                    print(8)
+                    # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置
+                    vehicle_lock.wait()
                     # todo: 等待车辆位置改变后再去观察车辆,与Vehicle线程间存在同步关系
                     self.update_curlocation().add_curlocation_to_path().update_tree()
-                    print(9)
                     self.predict_nextlocation()
-                    print(10)
+                    Vehicle.Vehicle.thread_run_num = 0
+                    with bs_lock:
+                        # 通知需要读取BS数据的线程,等BS数据完成更新后,再去读取
+                        bs_lock.notifyAll()

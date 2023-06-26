@@ -8,6 +8,7 @@ usage: test
 """
 
 time_lock = enviroment.time_lock
+bs_lock = BS.bs_lock
 
 
 class TestAddition:
@@ -37,14 +38,11 @@ class TestAddition:
         vehicle2.run()
         bs.run()
         while True:
-            with time_lock:
+            with bs_lock:
                 if not enviroment.time_finished:
-                    print(1)
                     # 等待时间系统到达下一个离散时间点时发起通知
-                    time_lock.wait()
-                    print(2)
+                    bs_lock.wait()
                     print(bs.vehicle_path[vehicle1.vehicle_no])
-                    print(3)
 
     # todo: 当前问题:时间设定为5s,BS每1s读取一次环境中的车辆当前路径,而在5s时间内所构建的路径序列中只有2个位置
     def test_BS_prediction(self):
@@ -62,14 +60,18 @@ class TestAddition:
         vehicle2 = Vehicle.Vehicle()
         vehicle2.register()
         vehicle2.run()
+
+        vehicle3 = Vehicle.Vehicle()
+        vehicle3.register()
+        vehicle3.run()
         # 利用离散时间点的前面10s构建树
         while time_system.now() < 100:
-            with time_lock:
-                # todo:与BS线程间存在同步关系,需要BS观察车辆并更新数据后,在读取
-                # question: 由于没有同步可能导致出现路径有时候多打一个或少打一个
-                time_lock.wait()
+            with bs_lock:
+                # 在BS线程更新完数据后再去读取
+                bs_lock.wait()
                 print(bs.vehicle_path[vehicle1.vehicle_no])
                 print(bs.vehicle_path[vehicle2.vehicle_no])
+                print(bs.vehicle_path[vehicle3.vehicle_no])
         # PPM.print_tree_pattern(bs.vehicle_tree[vehicle1.vehicle_no].root)
         # PPM.print_tree_pattern(bs.vehicle_tree[vehicle2.vehicle_no].root)
         # print("vehicle1上一个位置: " + vehicle1.last_location)
@@ -95,6 +97,6 @@ class TestAddition:
 if __name__ == '__main__':
     test = TestAddition()
     # test.test_build_tree()
-    test.test_print_path()
-    # test.test_BS_prediction()
+    # test.test_print_path()
+    test.test_BS_prediction()
     # test.test_time_system()
