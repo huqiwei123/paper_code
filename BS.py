@@ -1,5 +1,3 @@
-import time
-
 import Vehicle
 import PPM
 import threading
@@ -35,20 +33,6 @@ class BS:
         classify: 调用PPM算法对预测结果进行分簇
         bs_thread: BS线程,每隔一段时间,观察注册车辆的当前位置,将当前位置加入到路径序列中,最后更新车辆的树结构
     """
-    bs = None
-
-    @staticmethod
-    def get_bs() -> 'BS':
-        """
-        获取BS的唯一实例,不同车辆共用同一个BS实例
-        Returns:
-            object:
-                所有车辆共享的BS唯一实例
-
-        """
-        if BS.bs is None:
-            BS.bs = BS()
-        return BS.bs
 
     def __init__(self):
         self.vehicle_list = []

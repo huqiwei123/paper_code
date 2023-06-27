@@ -1,6 +1,5 @@
 import BS
 import PPM
-import Vehicle
 import enviroment
 
 """
@@ -19,6 +18,7 @@ class TestAddition:
             test_BS_prediction: 测试bs实例中根据所有车辆的路径树/上一个位置/当前位置预测车辆的下一个位置
             test_time_system: 测试时间系统
             test_BS_classify: 测试车辆分簇方法
+            test_judge_area: 测试离散坐标转实际坐标方法
     """
 
     # 测试利用路径序列构建路径树
@@ -30,16 +30,10 @@ class TestAddition:
 
     # 测试打印路径序列
     def test_print_path(self):
-        time_system = enviroment.Time.get_time_system()
-        bs = BS.BS.get_bs()
-        vehicle1 = Vehicle.Vehicle()
-        vehicle1.register()
-        vehicle2 = Vehicle.Vehicle()
-        vehicle2.register()
-        time_system.run()
-        vehicle1.run()
-        vehicle2.run()
-        bs.run()
+        # 初始化整个系统
+        enviroment.System(1)
+        bs = enviroment.System.bs
+        vehicle1 = enviroment.System.vehicle_list[0]
         while True:
             with bs_lock:
                 if not enviroment.time_finished:
@@ -49,17 +43,12 @@ class TestAddition:
 
     # 2个车辆实例,利用600s构建树,然后再根据上一个位置和当前位置去预测车辆的下一个位置
     def test_BS_prediction(self):
-        # 实例化一个环境时间
-        time_system = enviroment.Time.get_time_system()
-        time_system.run()
-        # 获得全局唯一的bs实例
-        bs = BS.BS.get_bs()
-        bs.run()
-        vehicle_list = Vehicle.Vehicle.bulk_register(2)
-        for vehicle in vehicle_list:
-            vehicle.run()
+        enviroment.System(300)
+        bs = enviroment.System.bs
+        vehicle_list = enviroment.System.vehicle_list
+        time_system = enviroment.System.time_system
         # 利用离散时间点的前面10s构建树
-        while time_system.now() < 600:
+        while time_system.now() < 10:
             with bs_lock:
                 # 在BS线程更新完数据后再去读取
                 bs_lock.wait()
@@ -76,8 +65,8 @@ class TestAddition:
 
     # 测试时间系统
     def test_time_system(self):
-        time_system = enviroment.Time.get_time_system()
-        time_system.run()
+        enviroment.System(2)
+        time_system = enviroment.System.time_system
         while True:
             with time_lock:
                 # 等待时间系统到达下一个离散时间点时发起通知
@@ -88,14 +77,10 @@ class TestAddition:
 
     # 测试车辆分簇方法
     def test_BS_classify(self):
-        bs = BS.BS.get_bs()
-        time_system = enviroment.Time.get_time_system()
-        vehicle_list = Vehicle.Vehicle.bulk_register(300)
-        bs.run()
-        time_system.run()
-        for vehicle in vehicle_list:
-            vehicle.run()
-        while time_system.now() < 300:
+        enviroment.System(300)
+        time_system = enviroment.System.time_system
+        bs = enviroment.System.bs
+        while time_system.now() < 10:
             pass
         print("分簇结果为:")
         test_result = {}
@@ -109,6 +94,26 @@ class TestAddition:
             print(":", end=" ")
             print(test_result[key])
 
+    # 测试离散坐标转实际坐标方法
+    def test_judge_area(self):
+        # 初始化并运行环境,环境中有100辆车
+        enviroment.System(100)
+        # 获得环境中的各个实例
+        time_system = enviroment.System.time_system
+        bs = enviroment.System.bs
+        vehicle_list = enviroment.System.vehicle_list
+        while True:
+            with bs_lock:
+                bs_lock.wait()
+                print("当前时刻", end=" ")
+                print(time_system.now(), end=" ")
+                print("所在的离散位置为:", end=" ")
+                print(vehicle_list[0].cur_location, end=" ")
+                print(",所在的x轴坐标为:", end=" ")
+                print(vehicle_list[0].x, end=" ")
+                print(",所在的y轴坐标为:", end=" ")
+                print(vehicle_list[0].y)
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -117,4 +122,5 @@ if __name__ == '__main__':
     # test.test_print_path()
     # test.test_BS_prediction()
     # test.test_time_system()
-    test.test_BS_classify()
+    # test.test_BS_classify()
+    test.test_judge_area()

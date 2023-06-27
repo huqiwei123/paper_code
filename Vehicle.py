@@ -1,9 +1,7 @@
 import random
 import threading
-import BS
 import enviroment
 
-all_location = ["l1", "l2", "l3", "l4", "l5", "l6"]
 time_lock = enviroment.time_lock
 vehicle_lock = threading.Condition()
 
@@ -17,13 +15,14 @@ class Vehicle:
         bs (object): 车辆注册的基站
         cur_location (str): 车辆当前位置
         last_location (str): 车辆的上一个位置
+        x: 车辆在环境中的x坐标
+        y: 车辆在环境中的y坐标
         drive_thread: 车辆驱动行驶的线程
 
     Methods:
         register: 将本车辆注册到BS中去
         run: 车辆开始行驶
         drive_method: 车辆行驶的方法
-        bulk_register: (static)批量注册车辆
 
     """
     vehicle_no = 1
@@ -31,12 +30,22 @@ class Vehicle:
     thread_run_num = 0
 
     def __init__(self):
+        # 车辆唯一识别号
         self.vehicle_no = Vehicle.vehicle_no
         Vehicle.vehicle_no += 1
+
         Vehicle.instance_num += 1
+        # 每实例化创建一辆车,在环境空间中进行计数
+        enviroment.Space.cur_vehicle_num += 1
+
         self.bs = None
-        self.cur_location = random.choice(all_location)
+        self.cur_location = random.choice(enviroment.all_location_label)
         self.last_location = None
+
+        # 车辆在环境空间中的位置坐标,根据所在的离散位置,在位置中随机确定
+        self.x = enviroment.Space.judge_area(self.cur_location)[0]
+        self.y = enviroment.Space.judge_area(self.cur_location)[1]
+
         # 为vehicle创建一个drive线程,每10s更新一次车辆位置,表征车辆正在行驶
         self.drive_thread = threading.Thread(target=self.drive_method)
 
@@ -51,10 +60,10 @@ class Vehicle:
         Returns: None
 
         """
-        bs = BS.BS.get_bs()
+        bs = enviroment.System.bs
         self.bs = bs
         bs.vehicle_register(self)
-        return BS.BS.get_bs()
+        return bs
 
     def run(self):
         """
@@ -79,29 +88,11 @@ class Vehicle:
                     # 等待下一个时间离散点到达后,所有车辆开始更新到下一个位置
                     time_lock.wait()
                     self.last_location = self.cur_location
-                    self.cur_location = random.choice(all_location)
+                    self.cur_location = random.choice(enviroment.all_location_label)
+                    self.x = enviroment.Space.judge_area(self.cur_location)[0]
+                    self.y = enviroment.Space.judge_area(self.cur_location)[1]
                     Vehicle.thread_run_num += 1
                     # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
                     if Vehicle.instance_num == Vehicle.thread_run_num:
                         with vehicle_lock:
                             vehicle_lock.notifyAll()
-
-    # 批量生成并注册车辆
-    @staticmethod
-    def bulk_register(num: int) -> list:
-        """
-
-        Args:
-            num: 注册车辆的数量
-
-        Returns:
-            list:
-                已注册车辆列表
-
-        """
-        vehicle_list = []
-        for i in range(num):
-            vehicle = Vehicle()
-            vehicle.register()
-            vehicle_list.append(vehicle)
-        return vehicle_list

@@ -1,6 +1,7 @@
 import numpy as np
 import Vehicle
 import BS
+import enviroment
 
 
 # 根据车辆历史路径序列构建三层树结构
@@ -101,7 +102,7 @@ class Predictor:
         Returns: 车辆的下一个位置
 
         """
-        bs = BS.BS.get_bs()
+        bs = enviroment.System.bs
 
         # 如果车辆在BS中注册了才进行预测
         if vehicle not in bs.vehicle_list:
@@ -144,7 +145,7 @@ class Classifier:
             dict:
                 车辆的分类结果集合
         """
-        bs = BS.BS.get_bs()
+        bs = enviroment.System.bs
 
         vehicle_curlocation = bs.vehicle_curlocation
         prediction_result = bs.prediction_result
