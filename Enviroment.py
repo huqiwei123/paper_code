@@ -3,6 +3,7 @@ import threading
 import time
 import Vehicle
 import BS
+import Content
 
 # 创建条件变量对象
 time_lock = threading.Condition()
@@ -26,11 +27,13 @@ class System:
     time_system = None
     bs = None
     vehicle_list = []
+    content_list = []
 
-    def __init__(self, vehicle_num: int):
+    def __init__(self, vehicle_num: int = 10, content_num: int = 10):
         System.time_system = Time()
         System.bs = BS.BS()
         System.vehicle_list = Space.bulk_register(vehicle_num)
+        System.content_list = Space.bulk_content(content_num)
         System.time_system.run()
         System.bs.run()
         for vehicle in System.vehicle_list:
@@ -96,7 +99,6 @@ class Time:
 class Space:
     """
     模拟环境空间
-    todo: 环境空间需要有一张映射表,表征空间区域和离散化位置序列的对应关系
 
     Methods:
         bulk_register: (static)批量注册车辆
@@ -165,3 +167,22 @@ class Space:
             vehicle.register()
             vehicle_list.append(vehicle)
         return vehicle_list
+
+    # 在环境中批量生成内容
+    @staticmethod
+    def bulk_content(num: int) -> list:
+        """
+
+        Args:
+            num: 生成的内容树
+
+        Returns:
+            list:
+                内容列表
+
+        """
+        content_list = []
+        for i in range(num):
+            content = Content.Content()
+            content_list.append(content)
+        return content_list

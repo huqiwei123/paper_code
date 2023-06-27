@@ -1,12 +1,12 @@
 import BS
 import PPM
-import enviroment
+import Enviroment
 
 """
 usage: test
 """
 
-time_lock = enviroment.time_lock
+time_lock = Enviroment.time_lock
 bs_lock = BS.bs_lock
 
 
@@ -19,6 +19,7 @@ class TestAddition:
             test_time_system: 测试时间系统
             test_BS_classify: 测试车辆分簇方法
             test_judge_area: 测试离散坐标转实际坐标方法
+            test_content_list: 测试内容集的生成并获取内容的主题和形式
     """
 
     # 测试利用路径序列构建路径树
@@ -31,22 +32,22 @@ class TestAddition:
     # 测试打印路径序列
     def test_print_path(self):
         # 初始化整个系统
-        enviroment.System(1)
-        bs = enviroment.System.bs
-        vehicle1 = enviroment.System.vehicle_list[0]
+        Enviroment.System(1)
+        bs = Enviroment.System.bs
+        vehicle1 = Enviroment.System.vehicle_list[0]
         while True:
             with bs_lock:
-                if not enviroment.time_finished:
+                if not Enviroment.time_finished:
                     # 等待时间系统到达下一个离散时间点时发起通知
                     bs_lock.wait()
                     print(bs.vehicle_path[vehicle1.vehicle_no])
 
     # 2个车辆实例,利用600s构建树,然后再根据上一个位置和当前位置去预测车辆的下一个位置
     def test_BS_prediction(self):
-        enviroment.System(300)
-        bs = enviroment.System.bs
-        vehicle_list = enviroment.System.vehicle_list
-        time_system = enviroment.System.time_system
+        Enviroment.System(300)
+        bs = Enviroment.System.bs
+        vehicle_list = Enviroment.System.vehicle_list
+        time_system = Enviroment.System.time_system
         # 利用离散时间点的前面10s构建树
         while time_system.now() < 10:
             with bs_lock:
@@ -65,21 +66,21 @@ class TestAddition:
 
     # 测试时间系统
     def test_time_system(self):
-        enviroment.System(2)
-        time_system = enviroment.System.time_system
+        Enviroment.System(2)
+        time_system = Enviroment.System.time_system
         while True:
             with time_lock:
                 # 等待时间系统到达下一个离散时间点时发起通知
-                if not enviroment.time_finished:
+                if not Enviroment.time_finished:
                     # 当系统模拟时间已经结束,不进入等待,并且结束该任务
                     time_lock.wait()
                     print(time_system.now())
 
     # 测试车辆分簇方法
     def test_BS_classify(self):
-        enviroment.System(300)
-        time_system = enviroment.System.time_system
-        bs = enviroment.System.bs
+        Enviroment.System(300)
+        time_system = Enviroment.System.time_system
+        bs = Enviroment.System.bs
         while time_system.now() < 10:
             pass
         print("分簇结果为:")
@@ -97,11 +98,11 @@ class TestAddition:
     # 测试离散坐标转实际坐标方法
     def test_judge_area(self):
         # 初始化并运行环境,环境中有100辆车
-        enviroment.System(100)
+        Enviroment.System(100)
         # 获得环境中的各个实例
-        time_system = enviroment.System.time_system
-        bs = enviroment.System.bs
-        vehicle_list = enviroment.System.vehicle_list
+        time_system = Enviroment.System.time_system
+        bs = Enviroment.System.bs
+        vehicle_list = Enviroment.System.vehicle_list
         while True:
             with bs_lock:
                 bs_lock.wait()
@@ -114,6 +115,22 @@ class TestAddition:
                 print(",所在的y轴坐标为:", end=" ")
                 print(vehicle_list[0].y)
 
+    # 测试内容集的生成并获取内容的主题和形式
+    def test_content_list(self):
+        Enviroment.System()
+        content_list = Enviroment.System.content_list
+        for content in content_list:
+            print("内容号为:", end=" ")
+            print(content.content_no, end=" ")
+            print("的内容主题为:", end=" ")
+            print(content.theme, end=" ")
+            print(",对应的向量表示为:", end=" ")
+            print(content.theme_arr, end=" ")
+            print(",内容的格式为:", end=" ")
+            print(content.form, end=" ")
+            print(",对应的向量表示为:", end=" ")
+            print(content.form_arr)
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -123,4 +140,5 @@ if __name__ == '__main__':
     # test.test_BS_prediction()
     # test.test_time_system()
     # test.test_BS_classify()
-    test.test_judge_area()
+    # test.test_judge_area()
+    test.test_content_list()

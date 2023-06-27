@@ -1,11 +1,11 @@
 import Vehicle
 import PPM
 import threading
-import enviroment
+import Enviroment
 
 bs_lock = threading.Condition()
 
-time_lock = enviroment.time_lock
+time_lock = Enviroment.time_lock
 vehicle_lock = Vehicle.vehicle_lock
 
 
@@ -143,7 +143,7 @@ class BS:
         """
         while True:
             with vehicle_lock:
-                if not enviroment.time_finished:
+                if not Enviroment.time_finished:
                     # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置,再进行分簇
                     vehicle_lock.wait()
                     self.update_curlocation().add_curlocation_to_path().update_tree()
