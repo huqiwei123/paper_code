@@ -65,7 +65,7 @@ class Vehicle:
         # 缓存空间大小
         self.cache_size = 100
         # 车辆当前请求的状态,是否发起请求,暂定为一定发起请求
-        self.request_status = True
+        self.request_status = False
         # 车辆当前的请求内容,请求暂定为内容号,从1到10编号的内容中随机选择一个请求
         self.request_content = random.randint(1, 10) if self.request_status else None
         # 车辆当前请求是否成功
@@ -125,9 +125,16 @@ class Vehicle:
                     self.cur_location = random.choice(Enviroment.all_location_label)
                     self.x = Enviroment.Space.judge_area(self.cur_location)[0]
                     self.y = Enviroment.Space.judge_area(self.cur_location)[1]
-
                     # 车辆请求发起过程,当本地无法获得内容的时候,随机从其他车辆中请求内容
-                    self.local_search_content(Enviroment.System.bs.vehicle_list[1])
+                    # todo: 当本地无法获得内容,需要写一个方法,在通信范围内的簇内车辆获取内容,如果通信范围内没有簇内车辆,则随机选择一个通信范围内的其他车辆
+                    if self.request_status:
+                        self.request_status = False
+                        local_result = self.find_content(self.request_content)
+                        if local_result:
+                            self.response_status = True
+                        else:
+                            request_thread = Communication.Request(self)
+                            request_thread.start()
 
                     Vehicle.thread_run_num += 1
                     # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
@@ -136,49 +143,57 @@ class Vehicle:
                             vehicle_lock.notifyAll()
 
     # todo: 向哪辆车发起请求?
+    def select_response_vehicle(self):
+        if self == self.bs.vehicle_list[0]:
+            return self.bs.vehicle_list[1]
+        elif self == self.bs.vehicle_list[1]:
+            return self.bs.vehicle_list[2]
+        else:
+            return self.bs.vehicle_list[1]
 
     # 内容获取,检查本地是否有内容,如果没有就发起请求,暂定为指定车辆
-    def local_search_content(self, response_vehicle):
+    def find_content(self, request_content):
         """
 
-        Args:
-            response_vehicle: 当本地获取不到内容的时候,向指定车辆发起内容请求
-
-        Returns: None
+        Returns: 是否缓存有内容
 
         """
-        if self.request_status:
-            if self.cache_status[self.request_status - 1] == 1:
-                self.response_status = True
-            else:
-                # 创建一个发起请求的线程,并启动该线程
-                request_thread = Communication.Request(self.request_content, self, response_vehicle)
-                request_thread.start()
+        if self.cache_status[request_content - 1] == 1:
+            return True
+        else:
+            return False
+            # # 创建一个发起请求的线程,并启动该线程
+            # request_thread = Communication.Request(self.request_content, self, response_vehicle)
+            # request_thread.start()
 
+    # todo: 初始请求发起者和中间节点存在一定的差异
     # 车辆对收到的请求进行处理
-    def request_process(self, quest_vehicle):
-        """
-        响应车辆对请求的处理方法
-        Args:
-            quest_vehicle: 请求车辆
-
-        Returns: None
-
-        """
-        # 对请求者的请求进行处理,检查请求者的请求在本地是否有,如果有则返回
-        if self.cache_status[quest_vehicle.request_content - 1] == 1:
-            # 如果有内容,就创建一个响应线程,给予响应
-            response_thread = Communication.Response(quest_vehicle.request_content, self, quest_vehicle)
-            response_thread.start()
+    # def request_process(self, quest_vehicle):
+    #     """
+    #     响应车辆对请求的处理方法
+    #     Args:
+    #         quest_vehicle: 请求车辆
+    #
+    #     Returns: None
+    #
+    #     """
+    #     # 对请求者的请求进行处理,检查请求者的请求在本地是否有,如果有则返回
+    #     if self.cache_status[quest_vehicle.request_content - 1] == 1:
+    #         # 如果有内容,就创建一个响应线程,给予响应
+    #         return True
+    #     # 如果请求的内容本地没有,则需要再向其他车辆请求
+    #     else:
+    #         return False
 
     # 车辆对收到的响应进行处理
-    def response_process(self):
-        """
-        请求车辆对响应的处理方法
-        Returns: None
-
-        """
-        self.response_status = True
+    # def response_process(self):
+    #     """
+    #     请求车辆对响应的处理方法
+    #     Returns: None
+    #
+    #     """
+    #     # todo: 如果是最初请求的发起者,者修改请求响应状态为True,否则不处理
+    #     self.response_status = True
 
     # todo: 如果内容没有被缓存,车辆判断是否要缓存该内容
     # def is_cahce(self):

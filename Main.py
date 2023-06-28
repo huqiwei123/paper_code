@@ -132,17 +132,22 @@ class TestAddition:
             print(content.form_arr)
 
     # 测试车辆间请求内容和响应内容的通信
+    # 多辆车之间的内容请求,车辆1向车辆2请求,如果请求不到向车辆3请求,最多请求5次
+    # 车辆3缓存有内容2,模拟车辆1向车辆2请求,没有请求到,再向车辆3请求,请求到了,则车辆1的请求响应状态为True,否则为False
     def test_vehicle_communication(self):
         Enviroment.System()
         time_system = Enviroment.System.time_system
         vehicle1 = Enviroment.System.vehicle_list[0]
         vehicle2 = Enviroment.System.vehicle_list[1]
+        vehicle3 = Enviroment.System.vehicle_list[2]
         # 车辆1向车辆2发起内容请求
         # 车辆2缓存有内容1
-        vehicle2.cache_status = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        vehicle2.cache_status = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         # 车辆1没有缓存内容1,车辆1向车辆2请求内容1
         vehicle1.cache_status = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        vehicle1.request_content = 1
+        vehicle3.cache_status = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        vehicle1.request_content = 2
+        vehicle1.request_status = True
         while time_system.now() < 5:
             pass
         print(vehicle1.response_status)
@@ -151,7 +156,7 @@ class TestAddition:
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     test = TestAddition()
-    case = 1
+    case = 8
     if case == 1:
         test.test_build_tree()
     elif case == 2:
