@@ -17,6 +17,8 @@ class Content:
         Content.content_no += 1
         # 内容名称
         # self.content_name = name
+        # todo: 内容大小
+        self.size = 10
         # 内容主题类型,内容主题暂时在内容生成的时候随机给定
         self.theme = random.choice(content_theme)
         # 内容格式,内容格式暂时在内容生成的时候随机给定

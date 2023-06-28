@@ -20,6 +20,7 @@ class TestAddition:
             test_BS_classify: 测试车辆分簇方法
             test_judge_area: 测试离散坐标转实际坐标方法
             test_content_list: 测试内容集的生成并获取内容的主题和形式
+            test_vehicle_communication: 测试车辆间请求内容和响应内容的通信
     """
 
     # 测试利用路径序列构建路径树
@@ -32,7 +33,7 @@ class TestAddition:
     # 测试打印路径序列
     def test_print_path(self):
         # 初始化整个系统
-        Enviroment.System(1)
+        Enviroment.System(2)
         bs = Enviroment.System.bs
         vehicle1 = Enviroment.System.vehicle_list[0]
         while True:
@@ -101,7 +102,6 @@ class TestAddition:
         Enviroment.System(100)
         # 获得环境中的各个实例
         time_system = Enviroment.System.time_system
-        bs = Enviroment.System.bs
         vehicle_list = Enviroment.System.vehicle_list
         while True:
             with bs_lock:
@@ -131,14 +131,40 @@ class TestAddition:
             print(",对应的向量表示为:", end=" ")
             print(content.form_arr)
 
+    # 测试车辆间请求内容和响应内容的通信
+    def test_vehicle_communication(self):
+        Enviroment.System()
+        time_system = Enviroment.System.time_system
+        vehicle1 = Enviroment.System.vehicle_list[0]
+        vehicle2 = Enviroment.System.vehicle_list[1]
+        # 车辆1向车辆2发起内容请求
+        # 车辆2缓存有内容1
+        vehicle2.cache_status = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        # 车辆1没有缓存内容1,车辆1向车辆2请求内容1
+        vehicle1.cache_status = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        vehicle1.request_content = 1
+        while time_system.now() < 5:
+            pass
+        print(vehicle1.response_status)
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     test = TestAddition()
-    # test.test_build_tree()
-    # test.test_print_path()
-    # test.test_BS_prediction()
-    # test.test_time_system()
-    # test.test_BS_classify()
-    # test.test_judge_area()
-    test.test_content_list()
+    case = 1
+    if case == 1:
+        test.test_build_tree()
+    elif case == 2:
+        test.test_print_path()
+    elif case == 3:
+        test.test_BS_prediction()
+    elif case == 4:
+        test.test_time_system()
+    elif case == 5:
+        test.test_BS_classify()
+    elif case == 6:
+        test.test_judge_area()
+    elif case == 7:
+        test.test_content_list()
+    elif case == 8:
+        test.test_vehicle_communication()
