@@ -29,14 +29,18 @@ class System:
     vehicle_list = []
     content_list = []
 
+    # 创建环境
     def __init__(self, vehicle_num: int = 10, content_num: int = 10):
         System.time_system = Time()
         System.bs = BS.BS()
         System.vehicle_list = Space.bulk_register(vehicle_num)
         System.content_list = Space.bulk_content(content_num)
-        System.time_system.run()
-        System.bs.run()
-        for vehicle in System.vehicle_list:
+
+    # 运行环境
+    def run(self):
+        self.bs.run()
+        self.time_system.run()
+        for vehicle in self.vehicle_list:
             vehicle.run()
 
 

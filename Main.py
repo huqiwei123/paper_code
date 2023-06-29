@@ -1,6 +1,7 @@
 import BS
 import PPM
 import Enviroment
+import Vehicle
 
 """
 usage: test
@@ -8,6 +9,7 @@ usage: test
 
 time_lock = Enviroment.time_lock
 bs_lock = BS.bs_lock
+vehicle_lock = Vehicle.vehicle_lock
 
 
 class TestAddition:
@@ -33,7 +35,7 @@ class TestAddition:
     # 测试打印路径序列
     def test_print_path(self):
         # 初始化整个系统
-        Enviroment.System(2)
+        Enviroment.System().run()
         bs = Enviroment.System.bs
         vehicle1 = Enviroment.System.vehicle_list[0]
         while True:
@@ -45,7 +47,7 @@ class TestAddition:
 
     # 2个车辆实例,利用600s构建树,然后再根据上一个位置和当前位置去预测车辆的下一个位置
     def test_BS_prediction(self):
-        Enviroment.System(300)
+        Enviroment.System(300).run()
         bs = Enviroment.System.bs
         vehicle_list = Enviroment.System.vehicle_list
         time_system = Enviroment.System.time_system
@@ -67,7 +69,7 @@ class TestAddition:
 
     # 测试时间系统
     def test_time_system(self):
-        Enviroment.System(2)
+        Enviroment.System(3).run()
         time_system = Enviroment.System.time_system
         while True:
             with time_lock:
@@ -79,7 +81,7 @@ class TestAddition:
 
     # 测试车辆分簇方法
     def test_BS_classify(self):
-        Enviroment.System(300)
+        Enviroment.System(300).run()
         time_system = Enviroment.System.time_system
         bs = Enviroment.System.bs
         while time_system.now() < 10:
@@ -99,7 +101,7 @@ class TestAddition:
     # 测试离散坐标转实际坐标方法
     def test_judge_area(self):
         # 初始化并运行环境,环境中有100辆车
-        Enviroment.System(100)
+        Enviroment.System(100).run()
         # 获得环境中的各个实例
         time_system = Enviroment.System.time_system
         vehicle_list = Enviroment.System.vehicle_list
@@ -117,7 +119,7 @@ class TestAddition:
 
     # 测试内容集的生成并获取内容的主题和形式
     def test_content_list(self):
-        Enviroment.System()
+        Enviroment.System().run()
         content_list = Enviroment.System.content_list
         for content in content_list:
             print("内容号为:", end=" ")
@@ -135,7 +137,7 @@ class TestAddition:
     # 多辆车之间的内容请求,车辆1向车辆2请求,如果请求不到向车辆3请求,最多请求5次
     # 车辆3缓存有内容2,模拟车辆1向车辆2请求,没有请求到,再向车辆3请求,请求到了,则车辆1的请求响应状态为True,否则为False
     def test_vehicle_communication(self):
-        Enviroment.System()
+        Enviroment.System().run()
         time_system = Enviroment.System.time_system
         vehicle1 = Enviroment.System.vehicle_list[0]
         vehicle2 = Enviroment.System.vehicle_list[1]
@@ -147,16 +149,40 @@ class TestAddition:
         vehicle1.cache_status = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         vehicle3.cache_status = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         vehicle1.request_content = 2
-        vehicle1.request_status = True
         while time_system.now() < 5:
-            pass
-        print(vehicle1.response_status)
+            with bs_lock:
+                bs_lock.wait()
+                print("当前是否发起请求:", end=" ")
+                print(vehicle1.request_status, end=" ")
+                print("此时刻的所有响应状态列表为:", end=" ")
+                print(vehicle1.response_status_list)
+        # import matplotlib.pyplot as plt
+        # plt.plot(vehicle1.response_status_list)
+        # plt.show()
+
+    # 测试车辆获取其通信范围内所有车辆的list
+    def test_vehicle_within_area(self):
+        env = Enviroment.System(100)
+        bs = env.bs
+        vehicle_list = env.vehicle_list
+        time_system = env.time_system
+        env.run()
+        while time_system.now() < 10:
+            with bs_lock:
+                bs_lock.wait()
+                for vehicle in vehicle_list:
+                    print(f"在时刻{time_system.now()}下,车辆{vehicle.vehicle_no}的坐标位置为({vehicle.x},{vehicle.y}),当前"
+                          f"通信范围内的车辆list为:", end=" ")
+                    view_list = []
+                    for v in vehicle.vehicle_within_area:
+                        view_list.append(v.vehicle_no)
+                    print(view_list)
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     test = TestAddition()
-    case = 8
+    case = 2
     if case == 1:
         test.test_build_tree()
     elif case == 2:
@@ -173,3 +199,5 @@ if __name__ == '__main__':
         test.test_content_list()
     elif case == 8:
         test.test_vehicle_communication()
+    elif case == 9:
+        test.test_vehicle_within_area()
