@@ -23,20 +23,16 @@ class Vehicle:
         cache_size: 车辆缓存空间大小
         request_status: 车辆请求状态,车辆是否发起了请求
         request_content: 车辆请求的内容
-        # drive_thread: 车辆驱动行驶的线程
 
     Methods:
         register: 将本车辆注册到BS中去
-        run: 车辆开始行驶
-        drive_method: 车辆行驶的方法
-        local_search_content: 内容获取,检查本地是否有内容,如果没有就发起请求,暂定为指定车辆
-        request_process: 响应车辆对请求的处理方法
-        response_process: 请求车辆对响应的处理方法
-
+        run: 启动车辆运行线程
+        run_method: 车辆运行线程,依次调用车辆行驶线程,计算车辆通信范围内的车辆集,如果有请求,则创建请求线程
+        select_response_vehcile: 当车辆由请求需要的时候,选择向哪辆车发起请求
+        find_content: 内容获取,检查本地是否有内容
     """
     vehicle_no = 1
     instance_num = 0
-    thread_run_num = 0
     barrier = threading.Barrier(0)
 
     # todo: 车辆通信范围
@@ -102,11 +98,16 @@ class Vehicle:
         return bs
 
     def run(self):
+        """
+        调用run方法,启动车辆的线程
+        Returns:
+
+        """
         self.run_thread.start()
 
     def run_method(self):
         """
-        车辆开始行驶
+        车辆开始行驶的线程
         Returns: None
 
         """
@@ -128,9 +129,10 @@ class Vehicle:
                     request.join()
                 else:
                     self.response_status_list.append(-1)
-                Vehicle.thread_run_num += 1
                 # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
-                if Vehicle.instance_num == Vehicle.thread_run_num:
+                remain = Vehicle.barrier.wait()
+                # 当最后一个线程执行完成时,通知bs线程
+                if remain == 0:
                     with vehicle_lock:
                         vehicle_lock.notifyAll()
 
@@ -186,6 +188,13 @@ class Vehicle:
 
     # todo: 向哪辆车发起请求?
     def select_response_vehicle(self):
+        """
+        当车辆本地没有缓存内容,需要向其他车辆请求内容时,选择请求的车辆
+        Returns:
+            Object:
+                响应车辆
+
+        """
         # todo: 首先必须是通信范围内的车辆,其次在通信范围内的所有车辆中优先选择簇内车辆
         if self == self.bs.vehicle_list[0]:
             return self.bs.vehicle_list[1]
@@ -194,25 +203,16 @@ class Vehicle:
         else:
             return self.bs.vehicle_list[1]
 
-    # todo: 计算处于通信范围内的所有车辆
-    # def cal_vehicle_within_area(self):
-    #     for vehicle in Enviroment.System.bs.vehicle_list:
-    #         if vehicle is not self:
-    #             x_diff = abs(self.x - vehicle.x)
-    #             y_diff = abs(self.y - vehicle.y)
-    #             import math
-    #             distance = math.sqrt(x_diff ** 2 + y_diff ** 2)
-    #             if distance <= Vehicle.communication_radius:
-    #                 self.vehicle_within_area.append(vehicle)
-
-    # 内容获取,检查本地是否有内容,如果没有就发起请求,暂定为指定车辆
+    # 内容获取,检查本地是否有内容
     def find_content(self, request_content):
         """
 
         Args:
             request_content: 请求的内容号
 
-        Returns: 是否缓存有该内容
+        Returns:
+            Boolean:
+                是否缓存有该内容
 
         """
         if self.cache_status[request_content - 1] == 1:
@@ -230,6 +230,9 @@ class Vehicle:
 
 # 车辆行驶线程
 class Drive(threading.Thread):
+    """
+    车辆行驶,位置改变的线程,同时赋值车辆的请求状态和请求内容,并将请求的内容加入到历史请求集合中,用来判断用户的兴趣偏好
+    """
     drive_lock = threading.Condition()
 
     def __init__(self, vehicle):
@@ -258,6 +261,9 @@ class Drive(threading.Thread):
 
 # 车辆请求线程
 class Request(threading.Thread):
+    """
+    车辆发起请求的线程
+    """
     def __init__(self, vehicle):
         super().__init__()
         # 发起请求的车辆
@@ -299,6 +305,9 @@ class Request(threading.Thread):
 
 # 计算通信范围内的所有车辆的线程
 class Area(threading.Thread):
+    """
+    车辆计算通信范围内其他车辆集的线程
+    """
     def __init__(self, vehicle):
         super().__init__()
         self.vehicle = vehicle

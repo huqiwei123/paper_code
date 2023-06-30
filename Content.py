@@ -9,6 +9,16 @@ content_list = []
 
 
 class Content:
+    """
+    内容类
+    Attributes:
+        content_no: 内容的内容号,唯一标识符
+        size: 内容的大小
+        theme: 内容所属于的主题
+        self.form: 内容所属的格式
+        theme_arr: 内容所属主题的向量表示
+        form_arr: 内容所属格式的向量表示
+    """
     content_no = 1
 
     def __init__(self):
@@ -29,6 +39,15 @@ class Content:
     # 将内容主题转变为相应的数组表示
     @staticmethod
     def theme2arr(theme):
+        """
+        将内容的主题转变为向量表示
+        Args:
+            theme: 内容所属的主题
+
+        Returns:
+            主题的向量表示
+
+        """
         theme_arr = []
         for each in content_theme:
             if theme == each:
@@ -40,6 +59,14 @@ class Content:
     # 将内容格式转变为相应的数组表示
     @staticmethod
     def form2arr(form):
+        """
+        将内容的格式转变为向量表示
+        Args:
+            form: 内容所属的格式
+
+        Returns:
+            格式的向量表示
+        """
         form_arr = []
         for each in content_form:
             if form == each:

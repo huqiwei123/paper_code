@@ -182,7 +182,7 @@ class TestAddition:
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     test = TestAddition()
-    case = 2
+    case = 1
     if case == 1:
         test.test_build_tree()
     elif case == 2:
