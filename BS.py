@@ -133,6 +133,12 @@ class BS:
         """
         self.classification_result = PPM.Classifier.classifier()
 
+    # 通知所有车辆分簇后的结果
+    def inform_classify_result(self):
+        for cluster in self.classification_result.values():
+            for vehicle in cluster:
+                vehicle.other_vehicle_within_cluster = [x for x in cluster if x != vehicle]
+
     # 线程:每到达一个时间点将车辆当前路径加入到车辆对应的历史路径序列中,并更新树结构
     def bs_thread(self):
         """
@@ -149,6 +155,7 @@ class BS:
                     self.update_curlocation().add_curlocation_to_path().update_tree()
                     self.predict_nextlocation()
                     self.classify()
+                    self.inform_classify_result()
                     Vehicle.Vehicle.thread_run_num = 0
                     with bs_lock:
                         # 通知需要读取BS数据的线程,等BS数据完成更新后,再去读取

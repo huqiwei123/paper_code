@@ -56,6 +56,9 @@ class Vehicle:
         self.x = Enviroment.Space.judge_area(self.cur_location)[0]
         self.y = Enviroment.Space.judge_area(self.cur_location)[1]
 
+        # 分簇后,簇内的其他车辆
+        self.other_vehicle_within_cluster = []
+
         # 车辆缓存的内容,暂时定为10个内容,随机缓存
         self.cache_status = [random.randint(0, 1) for _ in range(10)]
         # 每辆车的缓存空间大小为80,每个内容的大小固定为20,也就是一辆车最多只能缓存4个内容
@@ -196,6 +199,11 @@ class Vehicle:
 
         """
         # todo: 首先必须是通信范围内的车辆,其次在通信范围内的所有车辆中优先选择簇内车辆
+        # 在所有通信范围内的车辆中遍历
+        # if self.vehicle_within_area is None:
+        #     raise Exception(f"{self.vehicle_no}号车辆通信范围内没有其他车辆,无法请求内容")
+        # for vehicle in self.vehicle_within_area:
+
         if self == self.bs.vehicle_list[0]:
             return self.bs.vehicle_list[1]
         elif self == self.bs.vehicle_list[1]:

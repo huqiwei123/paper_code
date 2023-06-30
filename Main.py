@@ -15,24 +15,26 @@ vehicle_lock = Vehicle.vehicle_lock
 class TestAddition:
     """
         Methods:
-            test_build_tree: 测试利用路径序列构建路径树
-            test_print_path: 测试打印路径序列
-            test_BS_prediction: 测试bs实例中根据所有车辆的路径树/上一个位置/当前位置预测车辆的下一个位置
-            test_time_system: 测试时间系统
-            test_BS_classify: 测试车辆分簇方法
-            test_judge_area: 测试离散坐标转实际坐标方法
-            test_content_list: 测试内容集的生成并获取内容的主题和形式
-            test_vehicle_communication: 测试车辆间请求内容和响应内容的通信
+            1.test_build_tree: 测试利用路径序列构建路径树
+            2.test_print_path: 测试打印路径序列
+            3.test_BS_prediction: 测试bs实例中根据所有车辆的路径树/上一个位置/当前位置预测车辆的下一个位置
+            4.test_time_system: 测试时间系统
+            5.test_BS_classify: 测试车辆分簇方法
+            6.test_judge_area: 测试离散坐标转实际坐标方法
+            7.test_content_list: 测试内容集的生成并获取内容的主题和形式
+            8.test_vehicle_communication: 测试车辆间请求内容和响应内容的通信
+            9.test_vehicle_within_area: 测试车辆获取其通信范围内所有车辆的list
+            10.test_inform_classify_result: 测试每辆车获得簇内其他车辆的集合
     """
 
-    # 测试利用路径序列构建路径树
+    # 1.测试利用路径序列构建路径树
     def test_build_tree(self):
         alist = ["l1", "l2", "l3", "l4", "l2", "l3", "l2", "l3"]
         tree = PPM.BuildTree()
         tree.createTree(alist)
         PPM.print_tree_pattern(tree.root)
 
-    # 测试打印路径序列
+    # 2.测试打印路径序列
     def test_print_path(self):
         # 初始化整个系统
         Enviroment.System().run()
@@ -45,7 +47,7 @@ class TestAddition:
                     bs_lock.wait()
                     print(bs.vehicle_path[vehicle1.vehicle_no])
 
-    # 2个车辆实例,利用600s构建树,然后再根据上一个位置和当前位置去预测车辆的下一个位置
+    # 3.2个车辆实例,利用600s构建树,然后再根据上一个位置和当前位置去预测车辆的下一个位置
     def test_BS_prediction(self):
         Enviroment.System(300).run()
         bs = Enviroment.System.bs
@@ -67,7 +69,7 @@ class TestAddition:
             print("预测到的下一个位置: " + bs.prediction_result[vehicle.vehicle_no])
             print("============================================================")
 
-    # 测试时间系统
+    # 4.测试时间系统
     def test_time_system(self):
         Enviroment.System(3).run()
         time_system = Enviroment.System.time_system
@@ -79,7 +81,7 @@ class TestAddition:
                     time_lock.wait()
                     print(time_system.now())
 
-    # 测试车辆分簇方法
+    # 5.测试车辆分簇方法
     def test_BS_classify(self):
         Enviroment.System(300).run()
         time_system = Enviroment.System.time_system
@@ -98,7 +100,7 @@ class TestAddition:
             print(":", end=" ")
             print(test_result[key])
 
-    # 测试离散坐标转实际坐标方法
+    # 6.测试离散坐标转实际坐标方法
     def test_judge_area(self):
         # 初始化并运行环境,环境中有100辆车
         Enviroment.System(100).run()
@@ -117,7 +119,7 @@ class TestAddition:
                 print(",所在的y轴坐标为:", end=" ")
                 print(vehicle_list[0].y)
 
-    # 测试内容集的生成并获取内容的主题和形式
+    # 7.测试内容集的生成并获取内容的主题和形式
     def test_content_list(self):
         Enviroment.System().run()
         content_list = Enviroment.System.content_list
@@ -133,9 +135,7 @@ class TestAddition:
             print(",对应的向量表示为:", end=" ")
             print(content.form_arr)
 
-    # 测试车辆间请求内容和响应内容的通信
-    # 多辆车之间的内容请求,车辆1向车辆2请求,如果请求不到向车辆3请求,最多请求5次
-    # 车辆3缓存有内容2,模拟车辆1向车辆2请求,没有请求到,再向车辆3请求,请求到了,则车辆1的请求响应状态为True,否则为False
+    # 8.测试车辆间请求内容和响应内容的通信
     def test_vehicle_communication(self):
         Enviroment.System().run()
         time_system = Enviroment.System.time_system
@@ -160,10 +160,9 @@ class TestAddition:
         # plt.plot(vehicle1.response_status_list)
         # plt.show()
 
-    # 测试车辆获取其通信范围内所有车辆的list
+    # 9.测试车辆获取其通信范围内所有车辆的list
     def test_vehicle_within_area(self):
         env = Enviroment.System(100)
-        bs = env.bs
         vehicle_list = env.vehicle_list
         time_system = env.time_system
         env.run()
@@ -178,11 +177,27 @@ class TestAddition:
                         view_list.append(v.vehicle_no)
                     print(view_list)
 
+    # 10.bs告知每辆车分类结果
+    def test_inform_classify_result(self):
+        env = Enviroment.System(100)
+        vehicle_list = env.vehicle_list
+        time_system = env.time_system
+        env.run()
+        while time_system.now() < 10:
+            with bs_lock:
+                bs_lock.wait()
+                print(f"在时刻{time_system.now()}时,所有车辆自身簇内其他车辆的集合为:")
+                for vehicle in vehicle_list:
+                    new_list = []
+                    for v in vehicle.other_vehicle_within_cluster:
+                        new_list.append(v.vehicle_no)
+                    print(f"第{vehicle.vehicle_no}号车辆簇内其他车辆集合为:{new_list}")
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     test = TestAddition()
-    case = 1
+    case = 10
     if case == 1:
         test.test_build_tree()
     elif case == 2:
@@ -201,3 +216,5 @@ if __name__ == '__main__':
         test.test_vehicle_communication()
     elif case == 9:
         test.test_vehicle_within_area()
+    elif case == 10:
+        test.test_inform_classify_result()
