@@ -152,10 +152,12 @@ class BS:
                 if not Enviroment.time_finished:
                     # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置,再进行分簇
                     vehicle_lock.wait()
-                    self.update_curlocation().add_curlocation_to_path().update_tree()
-                    self.predict_nextlocation()
-                    self.classify()
-                    self.inform_classify_result()
+                    # 每过3个时间点,车辆位置发生一次改变,也就是bs每过3个时间点,观察车辆的位置,加入到当前路径序列并更新路径树,预测车辆的下一个位置,再进行分簇并通知所有车辆分簇结果
+                    if Enviroment.Time.counter % 4 == 0:
+                        self.update_curlocation().add_curlocation_to_path().update_tree()
+                        self.predict_nextlocation()
+                        self.classify()
+                        self.inform_classify_result()
                     Vehicle.Vehicle.thread_run_num = 0
                     with bs_lock:
                         # 通知需要读取BS数据的线程,等BS数据完成更新后,再去读取

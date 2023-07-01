@@ -24,6 +24,7 @@ all_location_label = ["l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9", "l10
 
 # 定义整个系统
 class System:
+
     time_system = None
     bs = None
     vehicle_list = []
@@ -43,6 +44,13 @@ class System:
         for vehicle in self.vehicle_list:
             vehicle.run()
 
+    @staticmethod
+    def reset():
+        System.bs = None
+        System.time_system = None
+        System.vehicle_list = []
+        System.content_list = []
+
 
 # 定义时间
 class Time:
@@ -56,6 +64,7 @@ class Time:
         run_time_method: 时间运行的方法
         now: 获取当前时间
     """
+    counter = 0
 
     def __init__(self):
         # 系统的初始时间为0
@@ -80,6 +89,7 @@ class Time:
         for now in range(total_time + 1):
             # 休眠时间步长
             time.sleep(time_step)
+            Time.counter += 1
             self.__now = now
             # 等待time_step完成后,发出时间系统信号,通知所有其他线程运行
             with time_lock:

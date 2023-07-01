@@ -116,15 +116,35 @@ class Vehicle:
         """
         while True:
             if not Enviroment.time_finished:
+
+                # 需要等到每个时间点的达到,该线程才能运行,否则被阻塞
                 with time_lock:
-                    # 等待下一个时间离散点到达后,所有车辆开始更新到下一个位置
                     time_lock.wait()
-                drive = Drive(self)
-                drive.start()
+
+                # 时间线程每运行三次,车辆位置才会改变,确保同一个簇内的车辆在接下来3个时间点的相对位置不变,仍然处于同一个簇内
+                if (Enviroment.Time.counter - 1) % 4 == 0:
+                    drive = Drive(self)
+                    drive.start()
                 Vehicle.barrier.wait()
-                cal_vehicle = Area(self)
-                cal_vehicle.start()
+                Vehicle.barrier.reset()
+                # 车辆当前请求的状态,是否发起请求,暂时定为随机发起请求r
+                self.request_status = False if random.randint(0, 1) == 0 else True
+                # todo: 车辆请求的内容应该和用户的兴趣偏好相关,大概率请求用户感兴趣的东西,这个可以通过csv去读给定的数据
+                self.request_content = 2
+
+                # 当车辆发起请求时,需要将用户请求的内容(请求内容号)记录到历史记录中
+                if self.request_status:
+                    self.request_history.append(self.request_content)
+                else:
+                    # 如果本次车辆没有发起请求,则请求历史中添加-1表示没有发起请求
+                    self.request_history.append(-1)
+
+                # 车辆每过3个时间点才发生位置的改变,所以每过三个时间点,才会计算车辆通信范围内所有其他车辆集
+                if (Enviroment.Time.counter - 1) % 4 == 0:
+                    cal_vehicle = Area(self)
+                    cal_vehicle.start()
                 Vehicle.barrier.wait()
+                Vehicle.barrier.reset()
                 # 当车辆由请求需要的时候,创建请求线程,并发起请求
                 if self.request_status:
                     request = Request(self)
@@ -133,11 +153,13 @@ class Vehicle:
                 else:
                     self.response_status_list.append(-1)
                 # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
+
                 remain = Vehicle.barrier.wait()
                 # 当最后一个线程执行完成时,通知bs线程
                 if remain == 0:
                     with vehicle_lock:
                         vehicle_lock.notifyAll()
+                Vehicle.barrier.reset()
 
     # 车辆每隔1秒发生位置的变化
     # def drive_method(self):
@@ -200,16 +222,44 @@ class Vehicle:
         """
         # todo: 首先必须是通信范围内的车辆,其次在通信范围内的所有车辆中优先选择簇内车辆
         # 在所有通信范围内的车辆中遍历
-        # if self.vehicle_within_area is None:
-        #     raise Exception(f"{self.vehicle_no}号车辆通信范围内没有其他车辆,无法请求内容")
-        # for vehicle in self.vehicle_within_area:
-
-        if self == self.bs.vehicle_list[0]:
-            return self.bs.vehicle_list[1]
-        elif self == self.bs.vehicle_list[1]:
-            return self.bs.vehicle_list[2]
+        if len(self.vehicle_within_area) == 0:
+            # todo: 通信范围内没有其他车辆,无法请求
+            pass
         else:
-            return self.bs.vehicle_list[1]
+            vehicle_with_area_set = set(self.vehicle_within_area)
+            other_vehicle_within_cluster_set = set(self.other_vehicle_within_cluster)
+            intersection = vehicle_with_area_set.intersection(other_vehicle_within_cluster_set)
+            # 如果通信范围内没有簇内车辆,则向距离最近的通信范围内的其他车辆发出请求
+            if len(intersection) == 0:
+                return self.min_distance_vehicle(self.vehicle_within_area)
+            else:
+                inter = list(intersection)
+                return self.min_distance_vehicle(inter)
+
+    def min_distance_vehicle(self, vehicle_list):
+        """
+        计算所有车辆集vehicle_list,距离自身最近的车辆
+        Args:
+            vehicle_list: 车辆集
+
+        Returns:
+
+        """
+        min_distance_vehicle = vehicle_list[0]
+        min_distance = self.cal_distance(min_distance_vehicle)
+        for vehicle in vehicle_list:
+            cur_distance = self.cal_distance(vehicle)
+            if cur_distance < min_distance:
+                min_distance = cur_distance
+                min_distance_vehicle = vehicle
+        return min_distance_vehicle
+
+        # if self == self.bs.vehicle_list[0]:
+        #     return self.bs.vehicle_list[1]
+        # elif self == self.bs.vehicle_list[1]:
+        #     return self.bs.vehicle_list[2]
+        # else:
+        #     return self.bs.vehicle_list[1]
 
     # 内容获取,检查本地是否有内容
     def find_content(self, request_content):
@@ -228,6 +278,21 @@ class Vehicle:
         else:
             # todo: 如果没有这个内容,是否要缓存这个内容?
             return False
+
+    def cal_distance(self, vehicle):
+        """
+        计算自身和其他车辆之间的距离
+        Args:
+            vehicle: 其他车辆
+
+        Returns:
+            距离
+        """
+        x_diff = abs(self.x - vehicle.x)
+        y_diff = abs(self.y - vehicle.y)
+        import math
+        distance = math.sqrt(x_diff ** 2 + y_diff ** 2)
+        return distance
 
     # todo: 如果内容没有被缓存,车辆判断是否要缓存该内容
     # def is_cahce(self):
@@ -248,23 +313,12 @@ class Drive(threading.Thread):
         self.vehicle = vehicle
 
     def run(self) -> None:
+        # print("这里需要三个时间点才会执行这里")
         # 车辆行驶过程
         self.vehicle.last_location = self.vehicle.cur_location
         self.vehicle.cur_location = random.choice(Enviroment.all_location_label)
         self.vehicle.x = Enviroment.Space.judge_area(self.vehicle.cur_location)[0]
         self.vehicle.y = Enviroment.Space.judge_area(self.vehicle.cur_location)[1]
-
-        # 车辆当前请求的状态,是否发起请求,暂时定为随机发起请求
-        self.vehicle.request_status = False if random.randint(0, 1) == 0 else True
-        # todo: 车辆请求的内容应该和用户的兴趣偏好相关,大概率请求用户感兴趣的东西,这个可以通过csv去读给定的数据
-        self.vehicle.request_content = 2
-
-        # 当车辆发起请求时,需要将用户请求的内容(请求内容号)记录到历史记录中
-        if self.vehicle.request_status:
-            self.vehicle.request_history.append(self.vehicle.request_content)
-        else:
-            # 如果本次车辆没有发起请求,则请求历史中添加-1表示没有发起请求
-            self.vehicle.request_history.append(-1)
 
 
 # 车辆请求线程
@@ -272,6 +326,7 @@ class Request(threading.Thread):
     """
     车辆发起请求的线程
     """
+
     def __init__(self, vehicle):
         super().__init__()
         # 发起请求的车辆
@@ -299,12 +354,16 @@ class Request(threading.Thread):
         # 发起请求,找到请求者要请求的响应对象
         response_vehicle = self.vehicle.select_response_vehicle()
         # 调用请求类中的Request中的request方法
+        if response_vehicle is None:
+            return
         response_result = response_vehicle.find_content(self.content_no)
         self.response_status = response_result
         while not self.response_status and self.request_num < 10:
             # 调用请求车辆的方法,找到下一个需要响应的车辆,向该车辆去请求
             response_vehicle = response_vehicle.select_response_vehicle()
             # 对请求的处理结果
+            if response_vehicle is None:
+                break
             response_result = response_vehicle.find_content(self.content_no)
             self.request_num += 1
             self.response_status = response_result
@@ -316,6 +375,7 @@ class Area(threading.Thread):
     """
     车辆计算通信范围内其他车辆集的线程
     """
+
     def __init__(self, vehicle):
         super().__init__()
         self.vehicle = vehicle
@@ -323,9 +383,6 @@ class Area(threading.Thread):
     def run(self) -> None:
         for vehicle in Enviroment.System.bs.vehicle_list:
             if vehicle is not self.vehicle:
-                x_diff = abs(self.vehicle.x - vehicle.x)
-                y_diff = abs(self.vehicle.y - vehicle.y)
-                import math
-                distance = math.sqrt(x_diff ** 2 + y_diff ** 2)
+                distance = self.vehicle.cal_distance(vehicle)
                 if distance <= Vehicle.communication_radius:
                     self.vehicle.vehicle_within_area.append(vehicle)

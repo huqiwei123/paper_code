@@ -1,4 +1,3 @@
-import threading
 
 
 # 请求类和响应类
