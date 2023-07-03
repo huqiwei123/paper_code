@@ -21,7 +21,6 @@ class BS:
         prediction_result (dict) : 预测结果
         classification_result (dict) : 保存分簇结果
         update: 基站更新路径和树结构的线程
-
     Methods:
         get_bs: 获取BS的唯一实例,不同车辆共用同一个BS实例
         vehicle_register: 车辆在BS上进行注册
@@ -41,7 +40,10 @@ class BS:
         self.vehicle_tree = {}
         self.prediction_result = {}
         self.classification_result = {}
-        self.update = threading.Thread(target=self.bs_thread)
+
+        # 记录每个时间点的缓存命中率
+        self.cache_hit_ration = []
+        # self.update = threading.Thread(target=self.bs_thread)
 
     def __str__(self):
         vehicle_no = []
@@ -65,13 +67,13 @@ class BS:
         self.vehicle_tree[vehicle_obj.vehicle_no] = PPM.BuildTree()
         self.prediction_result[vehicle_obj.vehicle_no] = ""
 
-    def run(self):
-        """
-        基站线程开始运行,每个时间点,观察所有车辆当前位置,依次更新所有车辆当前位置, 路径序列, 路径树, 预测下一个位置
-        Returns:
-
-        """
-        self.update.start()
+    # def run(self):
+    #     """
+    #     基站线程开始运行,每个时间点,观察所有车辆当前位置,依次更新所有车辆当前位置, 路径序列, 路径树, 预测下一个位置
+    #     Returns:
+    #
+    #     """
+    #     self.update.start()
 
     # 刷新车辆当前位置
     def update_curlocation(self):
@@ -139,26 +141,36 @@ class BS:
             for vehicle in cluster:
                 vehicle.other_vehicle_within_cluster = [x for x in cluster if x != vehicle]
 
+    # 计算每个时间点的缓存命中率
+    def cal_cache_hit_ration(self):
+        all_request_num = 0
+        all_response_num = 0
+        for vehicle in self.vehicle_list:
+            if vehicle.request_status:
+                all_request_num += 1
+            if vehicle.cur_response_status:
+                all_response_num += 1
+            self.cache_hit_ration.append(all_response_num / all_request_num)
+
     # 线程:每到达一个时间点将车辆当前路径加入到车辆对应的历史路径序列中,并更新树结构
-    def bs_thread(self):
-        """
-        BS线程,每隔一段时间,观察注册车辆的当前位置,并更新车辆的树结构,并预测出车辆的下一个位置,更新prediction_result结果
-
-        Returns: None
-
-        """
-        while True:
-            with vehicle_lock:
-                if not Enviroment.time_finished:
-                    # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置,再进行分簇
-                    vehicle_lock.wait()
-                    # 每过3个时间点,车辆位置发生一次改变,也就是bs每过3个时间点,观察车辆的位置,加入到当前路径序列并更新路径树,预测车辆的下一个位置,再进行分簇并通知所有车辆分簇结果
-                    if Enviroment.Time.counter % 4 == 0:
-                        self.update_curlocation().add_curlocation_to_path().update_tree()
-                        self.predict_nextlocation()
-                        self.classify()
-                        self.inform_classify_result()
-                    Vehicle.Vehicle.thread_run_num = 0
-                    with bs_lock:
-                        # 通知需要读取BS数据的线程,等BS数据完成更新后,再去读取
-                        bs_lock.notifyAll()
+    # def bs_thread(self):
+    #     """
+    #     BS线程,每隔一段时间,观察注册车辆的当前位置,并更新车辆的树结构,并预测出车辆的下一个位置,更新prediction_result结果
+    #
+    #     Returns: None
+    #
+    #     """
+    #     while True:
+    #         with vehicle_lock:
+    #             if not Enviroment.time_finished:
+    #                 # 等待所有车辆线程的位置更新后再去观察车辆当前位置,更新路径和树结构,并预测下一个位置,再进行分簇
+    #                 vehicle_lock.wait()
+    #                 # 每过3个时间点,车辆位置发生一次改变,也就是bs每过3个时间点,观察车辆的位置,加入到当前路径序列并更新路径树,预测车辆的下一个位置,再进行分簇并通知所有车辆分簇结果
+    #                 if Enviroment.Time.counter % 4 == 0:
+    #                     self.update_curlocation().add_curlocation_to_path().update_tree()
+    #                     self.predict_nextlocation()
+    #                     self.classify()
+    #                     self.inform_classify_result()
+    #                 with bs_lock:
+    #                     # 通知需要读取BS数据的线程,等BS数据完成更新后,再去读取
+    #                     bs_lock.notifyAll()

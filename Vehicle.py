@@ -1,6 +1,7 @@
 import random
 import threading
 import Enviroment
+import ActivityLevel
 
 time_lock = Enviroment.time_lock
 vehicle_lock = threading.Condition()
@@ -34,8 +35,9 @@ class Vehicle:
     vehicle_no = 1
     instance_num = 0
     barrier = threading.Barrier(0)
+    code_executed = False
 
-    # todo: 车辆通信范围
+    # 车辆通信范围
     communication_radius = 5
 
     def __init__(self):
@@ -52,6 +54,9 @@ class Vehicle:
         self.cur_location = random.choice(Enviroment.all_location_label)
         self.last_location = None
 
+        # 在簇中的角色,0表示孤儿,1表示簇成员,2表示簇头
+        # self.cluster_character = 0
+
         # 车辆在环境空间中的位置坐标,根据所在的离散位置,在位置中随机确定
         self.x = Enviroment.Space.judge_area(self.cur_location)[0]
         self.y = Enviroment.Space.judge_area(self.cur_location)[1]
@@ -65,21 +70,30 @@ class Vehicle:
         self.cache_size = 80
         # 车辆当前请求的状态,是否发起请求
         self.request_status = None
+        # 车辆历史请求记录,用于计算用户活跃度
+        self.request_status_history = []
+
         # 车辆当前的请求内容,请求暂定为内容号
         self.request_content = None
 
+        # 请求的跳数
+        self.hop_count = 0
+        self.cur_response_status = False
         # 记录每次请求的命中情况
         self.response_status_list = []
 
-        # todo: 通过兴趣偏好学习方法实时生成并更新用户实时内容兴趣偏好
+        # todo: 通过兴趣偏好学习方法实时生成并更新用户实时内容兴趣偏好,通过perferenceLearning模块中的方法根据request_history得到兴趣偏好内容
         self.theme_interest = []
         self.form_interest = []
 
-        # todo: 车辆历史请求记录,用于根据用户的请求历史预测用户的内容兴趣偏好
+        # 车辆历史请求记录,用于根据用户的请求历史预测用户的内容兴趣偏好
         self.request_history = []
 
         # 通信范围内的所有车辆
         self.vehicle_within_area = []
+
+        # todo: 车辆在簇内的活跃度
+        self.activity_level = 0
 
         # 车辆运行的线程,脱离与主线程,每个车辆都有独立运行的子线程
         self.run_thread = threading.Thread(target=self.run_method)
@@ -125,10 +139,18 @@ class Vehicle:
                 if (Enviroment.Time.counter - 1) % 4 == 0:
                     drive = Drive(self)
                     drive.start()
+
                 Vehicle.barrier.wait()
                 Vehicle.barrier.reset()
-                # 车辆当前请求的状态,是否发起请求,暂时定为随机发起请求r
+
+                # 车辆当前请求的状态,是否发起请求,暂时定为随机发起请求
                 self.request_status = False if random.randint(0, 1) == 0 else True
+                # 记录车辆历史请求状态,1表示发起请求,0表示没有发起请求,用于计算用户的近期活跃度
+                if self.request_status:
+                    self.request_status_history.append(1)
+                else:
+                    self.request_status_history.append(0)
+
                 # todo: 车辆请求的内容应该和用户的兴趣偏好相关,大概率请求用户感兴趣的东西,这个可以通过csv去读给定的数据
                 self.request_content = 2
 
@@ -139,97 +161,103 @@ class Vehicle:
                     # 如果本次车辆没有发起请求,则请求历史中添加-1表示没有发起请求
                     self.request_history.append(-1)
 
+                # 每个时间点在所有实例线程中只能运行一次
+                if not Vehicle.code_executed:
+
+                    if Enviroment.Time.counter % 4 == 0:
+                        self.bs.update_curlocation().add_curlocation_to_path().update_tree()
+                        self.bs.predict_nextlocation()
+                        self.bs.classify()
+                        self.bs.inform_classify_result()
+                    Vehicle.code_executed = True
+
+                Vehicle.barrier.wait()
+                Vehicle.barrier.reset()
+
+                # 计算每辆车的活跃度
+                self.activity_level = ActivityLevel.ActivityLevel.cal_activity_level(self)
+
                 # 车辆每过3个时间点才发生位置的改变,所以每过三个时间点,才会计算车辆通信范围内所有其他车辆集
                 if (Enviroment.Time.counter - 1) % 4 == 0:
                     cal_vehicle = Area(self)
                     cal_vehicle.start()
+
+                # 等待所有车辆计算完通信范围内的所有其他车辆集后再发起请求
                 Vehicle.barrier.wait()
                 Vehicle.barrier.reset()
-                # 当车辆由请求需要的时候,创建请求线程,并发起请求
+
+                # 当车辆有请求需要的时候,创建请求线程,并发起请求
                 if self.request_status:
                     request = Request(self)
                     request.start()
                     request.join()
                 else:
                     self.response_status_list.append(-1)
-                # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
 
+                # 等待所有请求完成后,可以开始观察
                 remain = Vehicle.barrier.wait()
                 # 当最后一个线程执行完成时,通知bs线程
+
+                Vehicle.code_executed = False
                 if remain == 0:
                     with vehicle_lock:
                         vehicle_lock.notifyAll()
-                Vehicle.barrier.reset()
 
-    # 车辆每隔1秒发生位置的变化
-    # def drive_method(self):
-    #     """
-    #     车辆每个时间点的行驶和对内容的请求
-    #
-    #     Returns: None
-    #
-    #     """
-    #     while True:
-    #         if not Enviroment.time_finished:
-    #             # 先要获得锁condition,再在锁的作用域中调用wait
-    #             with time_lock:
-    #                 # 等待下一个时间离散点到达后,所有车辆开始更新到下一个位置
-    #                 time_lock.wait()
-    #
-    #                 # 车辆行驶过程
-    #                 self.last_location = self.cur_location
-    #                 self.cur_location = random.choice(Enviroment.all_location_label)
-    #                 self.x = Enviroment.Space.judge_area(self.cur_location)[0]
-    #                 self.y = Enviroment.Space.judge_area(self.cur_location)[1]
-    #
-    #                 # 车辆当前请求的状态,是否发起请求,暂时定为随机发起请求
-    #                 self.request_status = False if random.randint(0, 1) == 0 else True
-    #                 # todo: 车辆请求的内容应该和用户的兴趣偏好相关,大概率请求用户感兴趣的东西,这个可以通过csv去读给定的数据
-    #                 self.request_content = 2
-    #
-    #                 # 当车辆发起请求时,需要将用户请求的内容(请求内容号)记录到历史记录中
-    #                 if self.request_status:
-    #                     self.request_history.append(self.request_content)
-    #                 else:
-    #                     # 如果本次车辆没有发起请求,则请求历史中添加-1表示没有发起请求
-    #                     self.request_history.append(-1)
-    #
-    #                 # 车辆请求发起过程,当本地无法获得内容的时候,随机从其他车辆中请求内容
-    #                 # todo: 当本地无法获得内容,需要写一个方法,在通信范围内的簇内车辆获取内容,如果通信范围内没有簇内车辆,则随机选择一个通信范围内的其他车辆
-    #                 if self.request_status:
-    #                     local_result = self.find_content(self.request_content)
-    #                     if local_result:
-    #                         self.response_status_list.append(True)
-    #                     else:
-    #                         request = Communication.Request(self)
-    #                         request.run()
-    #                 else:
-    #                     self.response_status_list.append(-1)
-    #                 Vehicle.thread_run_num += 1
-    #                 # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
-    #                 if Vehicle.instance_num == Vehicle.thread_run_num:
-    #                     with vehicle_lock:
-    #                         vehicle_lock.notifyAll()
+                # 所有车辆实例都已经行驶完成后,通知BS线程,可以开始观察了
 
-    # todo: 向哪辆车发起请求?
-    def select_response_vehicle(self):
+                # remain = Vehicle.barrier.wait()
+                # # 当最后一个线程执行完成时,通知bs线程
+                # if remain == 0:
+                #     with vehicle_lock:
+                #         vehicle_lock.notifyAll()
+                # Vehicle.barrier.reset()
+
+    # 作为请求源,发起请求
+    def select_response_vehicle_as_origin(self):
         """
-        当车辆本地没有缓存内容,需要向其他车辆请求内容时,选择请求的车辆
+        当车辆本地没有缓存内容,需要向其他车辆请求内容时,选择请求的车辆的策略:
+        如果通信范围内没有车辆,返回为None
+        在通信范围内优先选择同一簇内且距离最近的车辆,如果没有同一簇内的车辆,选择通信范围内最近的车辆
         Returns:
             Object:
                 响应车辆
 
         """
-        # todo: 首先必须是通信范围内的车辆,其次在通信范围内的所有车辆中优先选择簇内车辆
         # 在所有通信范围内的车辆中遍历
         if len(self.vehicle_within_area) == 0:
-            # todo: 通信范围内没有其他车辆,无法请求
-            pass
+            # 通信范围内没有其他车辆,无法请求,也就是cur_response_status为False
+            return None
         else:
             vehicle_with_area_set = set(self.vehicle_within_area)
             other_vehicle_within_cluster_set = set(self.other_vehicle_within_cluster)
             intersection = vehicle_with_area_set.intersection(other_vehicle_within_cluster_set)
             # 如果通信范围内没有簇内车辆,则向距离最近的通信范围内的其他车辆发出请求
+            if len(intersection) == 0:
+                return self.min_distance_vehicle(self.vehicle_within_area)
+            else:
+                inter = list(intersection)
+                return self.min_distance_vehicle(inter)
+
+    # 作为中继节点,发起请求
+    def select_response_vehicle_as_relay(self, vehicle):
+        """
+        作为中继节点,选择响应车辆的策略和请求源不同
+        如果通信范围内没有车辆,返回None
+        首先考虑通信范围内和请求源在同一个簇内且距离最近的车辆,如果没有则请求通信范围内其他距离最近的车辆
+        Args:
+            vehicle: 源请求车辆
+        Returns:
+            Object:
+                响应车辆
+
+        """
+        if len(self.vehicle_within_area) == 0:
+            return None
+        else:
+            # 源请求车辆的簇集合
+            other_vehicle_whitin_cluster_for_origin_set = set(vehicle.other_vehicle_within_cluster)
+            vehicle_with_area_set = set(self.vehicle_within_area)
+            intersection = vehicle_with_area_set.intersection(other_vehicle_whitin_cluster_for_origin_set)
             if len(intersection) == 0:
                 return self.min_distance_vehicle(self.vehicle_within_area)
             else:
@@ -313,7 +341,6 @@ class Drive(threading.Thread):
         self.vehicle = vehicle
 
     def run(self) -> None:
-        # print("这里需要三个时间点才会执行这里")
         # 车辆行驶过程
         self.vehicle.last_location = self.vehicle.cur_location
         self.vehicle.cur_location = random.choice(Enviroment.all_location_label)
@@ -333,8 +360,8 @@ class Request(threading.Thread):
         self.vehicle = vehicle
         # 请求的内容号
         self.content_no = None
-        # 请求传递的次数
-        self.request_num = 1
+        # 请求传递的次数,初始为0
+        self.request_num = 0
         # 请求是否命中的状态
         self.response_status = False
 
@@ -342,17 +369,46 @@ class Request(threading.Thread):
         # 填入车辆请求的内容
         self.content_no = self.vehicle.request_content
         # 车辆请求发起过程,当本地无法获得内容的时候,随机从其他车辆中请求内容
-        # todo: 当本地无法获得内容,需要写一个方法,在通信范围内的簇内车辆获取内容,如果通信范围内没有簇内车辆,则随机选择一个通信范围内的其他车辆
         local_result = self.vehicle.find_content(self.content_no)
         if local_result:
+            self.response_status = True
             self.vehicle.response_status_list.append(True)
         else:
             self.request_another()
 
+    # 向另一辆车发起请求
     def request_another(self):
+        """
+        不考虑车辆的通信范围,先在车辆所在的簇内寻找内容,若找不到,则到簇外寻找
+        Returns:
+        """
+        # 在簇内车辆中寻找内容
+        # for vehicle in self.vehicle.other_vehicle_within_cluster:
+        #     self.request_num += 1
+        #     # 当请求次数超过一定跳数的时候,放弃请求,认为请求失败
+        #     if self.request_num > 20:
+        #         return
+        #     # 在簇内车辆集中找,找到则返回
+        #     if vehicle.find_content(self.content_no):
+        #         self.response_status = True
+        #         self.vehicle.response_status_list.append(True)
+        #         return
+        # other_vehicle_within_cluster_set = set(self.vehicle.other_vehicle_within_cluster)
+        # vehicle_list = set(self.vehicle.bs.vehicle_list)
+        # # 簇外车辆集,簇内车辆找不到内容就到簇外车辆中寻找内容
+        # other_vehicle_out_cluster_set = vehicle_list.difference(other_vehicle_within_cluster_set)
+        # for vehicle in other_vehicle_out_cluster_set:
+        #     self.request_num += 1
+        #     if self.request_num > 20:
+        #         return
+        #     if vehicle.find_content(self.content_no):
+        #         self.response_status = True
+        #         self.vehicle.response_status_list.append(True)
+        #         return
 
         # 发起请求,找到请求者要请求的响应对象
-        response_vehicle = self.vehicle.select_response_vehicle()
+        # 初始,源请求车辆选择响应的车辆发起请求
+        response_vehicle = self.vehicle.select_response_vehicle_as_origin()
         # 调用请求类中的Request中的request方法
         if response_vehicle is None:
             return
@@ -360,13 +416,15 @@ class Request(threading.Thread):
         self.response_status = response_result
         while not self.response_status and self.request_num < 10:
             # 调用请求车辆的方法,找到下一个需要响应的车辆,向该车辆去请求
-            response_vehicle = response_vehicle.select_response_vehicle()
+            response_vehicle = response_vehicle.select_response_vehicle_as_relay(self.vehicle)
             # 对请求的处理结果
             if response_vehicle is None:
-                break
+                return
             response_result = response_vehicle.find_content(self.content_no)
             self.request_num += 1
             self.response_status = response_result
+        self.vehicle.hop_count = self.request_num
+        self.vehicle.cur_response_status = response_result
         self.vehicle.response_status_list.append(self.response_status)
 
 

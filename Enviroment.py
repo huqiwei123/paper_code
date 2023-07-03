@@ -1,6 +1,7 @@
 import random
 import threading
 import time
+import ActivityLevel
 import Vehicle
 import BS
 import Content
@@ -39,7 +40,7 @@ class System:
 
     # 运行环境
     def run(self):
-        self.bs.run()
+        # self.bs.run()
         self.time_system.run()
         for vehicle in self.vehicle_list:
             vehicle.run()
@@ -48,6 +49,7 @@ class System:
     def reset():
         System.bs = None
         System.time_system = None
+        System.activity_level = None
         System.vehicle_list = []
         System.content_list = []
 

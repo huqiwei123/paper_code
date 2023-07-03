@@ -50,10 +50,10 @@ class TestAddition(unittest.TestCase):
         bs = Enviroment.System.bs
         vehicle1 = Enviroment.System.vehicle_list[0]
         while True:
-            with bs_lock:
+            with vehicle_lock:
                 if not Enviroment.time_finished:
                     # 等待时间系统到达下一个离散时间点时发起通知
-                    bs_lock.wait()
+                    vehicle_lock.wait()
                     if Enviroment.Time.counter % 4 == 0:
                         print(bs.vehicle_path[vehicle1.vehicle_no])
 
@@ -64,10 +64,10 @@ class TestAddition(unittest.TestCase):
         vehicle_list = Enviroment.System.vehicle_list
         time_system = Enviroment.System.time_system
         # 利用离散时间点的前面10s构建树
-        while time_system.now() < 10:
-            with bs_lock:
+        while time_system.now() < 30:
+            with vehicle_lock:
                 # 在BS线程更新完数据后再去读取
-                bs_lock.wait()
+                vehicle_lock.wait()
         for vehicle in vehicle_list:
             print("车辆号为 " + str(vehicle.vehicle_no))
             print("当前路径:", end=" ")
@@ -84,16 +84,16 @@ class TestAddition(unittest.TestCase):
         Enviroment.System().run()
         time_system = Enviroment.System.time_system
         while True:
-            with bs_lock:
+            with vehicle_lock:
                 # 等待时间系统到达下一个离散时间点时发起通知
                 if not Enviroment.time_finished:
                     # 当系统模拟时间已经结束,不进入等待,并且结束该任务
-                    bs_lock.wait()
+                    vehicle_lock.wait()
                     print(time_system.now())
 
     # 5.测试车辆分簇方法
     def test_BS_classify(self):
-        Enviroment.System(300).run()
+        Enviroment.System(10).run()
         time_system = Enviroment.System.time_system
         bs = Enviroment.System.bs
         while time_system.now() < 10:
@@ -118,8 +118,8 @@ class TestAddition(unittest.TestCase):
         time_system = Enviroment.System.time_system
         vehicle_list = Enviroment.System.vehicle_list
         while True:
-            with bs_lock:
-                bs_lock.wait()
+            with vehicle_lock:
+                vehicle_lock.wait()
                 if Enviroment.Time.counter % 4 == 0:
                     print("当前时刻", end=" ")
                     print(time_system.now(), end=" ")
@@ -161,8 +161,8 @@ class TestAddition(unittest.TestCase):
         vehicle3.cache_status = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         vehicle1.request_content = 2
         while time_system.now() < 60:
-            with bs_lock:
-                bs_lock.wait()
+            with vehicle_lock:
+                vehicle_lock.wait()
                 new_list = []
                 for vehicle in vehicle1.other_vehicle_within_cluster:
                     new_list.append(vehicle.vehicle_no)
@@ -183,13 +183,13 @@ class TestAddition(unittest.TestCase):
 
     # 9.测试车辆获取其通信范围内所有车辆的list
     def test_vehicle_within_area(self):
-        env = Enviroment.System(100)
+        env = Enviroment.System(500)
         vehicle_list = env.vehicle_list
         time_system = env.time_system
         env.run()
         while time_system.now() < 10:
-            with bs_lock:
-                bs_lock.wait()
+            with vehicle_lock:
+                vehicle_lock.wait()
                 if Enviroment.Time.counter % 4 == 0:
                     for vehicle in vehicle_list:
                         print(
@@ -207,8 +207,8 @@ class TestAddition(unittest.TestCase):
         time_system = env.time_system
         env.run()
         while time_system.now() < 10:
-            with bs_lock:
-                bs_lock.wait()
+            with vehicle_lock:
+                vehicle_lock.wait()
                 if Enviroment.Time.counter % 4 == 0:
                     print(f"在时刻{time_system.now()}时,所有车辆自身簇内其他车辆的集合为:")
                     for vehicle in vehicle_list:

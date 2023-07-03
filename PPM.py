@@ -139,18 +139,27 @@ class Classifier:
     @staticmethod
     def classifier():
         """
-        预测每辆车辆的位置后,将当前位置和下一个位置相同的车辆划分为一个簇
+        1.选择簇头,随机选择
+        2.将簇头车辆通信范围内的车辆,当前位置和下一个位置相同的车辆加入到簇头所在的簇内,直到所有车辆分簇完成
         Returns:
             dict:
                 车辆的分类结果集合
         """
         bs = Enviroment.System.bs
-
+        vehicle_list = bs.vehicle_list
         vehicle_curlocation = bs.vehicle_curlocation
         prediction_result = bs.prediction_result
-
+        # 记录已经完成分簇的车辆集
+        # has_been_clustered = {}
+        # 分类结果集合
         classify_result = {}
-        for each in bs.vehicle_list:
+
+        # 选择簇头
+        # for vehicle in vehicle_list:
+        #     # 随机选择一辆车作为簇头
+        #     vehicle.cluster_character = 2
+
+        for each in vehicle_list:
             key = (vehicle_curlocation[each.vehicle_no], prediction_result[each.vehicle_no])
             if key in classify_result:
                 classify_result[key].append(each)
