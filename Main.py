@@ -96,8 +96,10 @@ class TestAddition(unittest.TestCase):
         Enviroment.System(10).run()
         time_system = Enviroment.System.time_system
         bs = Enviroment.System.bs
-        while time_system.now() < 10:
-            pass
+        while time_system.now() < 1800:
+            with vehicle_lock:
+                vehicle_lock.wait()
+                print(time_system.now())
         print("分簇结果为:")
         test_result = {}
         # 测试中,将值列表中的对象以车辆号代替
@@ -216,6 +218,37 @@ class TestAddition(unittest.TestCase):
                         for v in vehicle.other_vehicle_within_cluster:
                             new_list.append(v.vehicle_no)
                         print(f"第{vehicle.vehicle_no}号车辆簇内其他车辆集合为:{new_list}")
+
+    def test_cal_activityLevel(self):
+        env = Enviroment.System(50, 100)
+        vehicle_list = env.vehicle_list
+        time_system = env.time_system
+        env.run()
+        while time_system.now() < 30:
+            pass
+        with vehicle_lock:
+            vehicle_lock.wait()
+            for vehicle in vehicle_list:
+                print(f"{vehicle.vehicle_no}簇内的其他车辆为{vehicle.other_vehicle_within_cluster}")
+                print(f"{vehicle.vehicle_no}号车辆的请求历史状态为{vehicle.request_status_history}")
+                print(f"{vehicle.vehicle_no}号车辆的活跃度等级为{vehicle.activity_level}")
+                print(f"{vehicle.vehicle_no}号车辆请求成功的跳数{vehicle.hop_count}")
+            # 总请求量
+            all_request = 0
+            # 请求成功的数量
+            success = 0
+            for vehicle in vehicle_list:
+                if vehicle.request_status:
+                    all_request += 1
+                if vehicle.response_status_list[-1] == True:
+                    success += 1
+            if all_request == 0:
+                print("此时没有任何一辆车有请求")
+            else:
+                print(f"总请求次数{all_request}")
+                print(f"总请求成功次数{success}")
+                print(f"命中率为{success / all_request}")
+            print(env.bs.cache_hit_ration)
 
 
 # Press the green button in the gutter to run the script.

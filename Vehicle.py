@@ -36,6 +36,7 @@ class Vehicle:
     instance_num = 0
     barrier = threading.Barrier(0)
     code_executed = False
+    cal_cache_hit = False
 
     # 车辆通信范围
     communication_radius = 5
@@ -65,7 +66,7 @@ class Vehicle:
         self.other_vehicle_within_cluster = []
 
         # 车辆缓存的内容,暂时定为10个内容,随机缓存
-        self.cache_status = [random.randint(0, 1) for _ in range(10)]
+        self.cache_status = random_cache_content()
         # 每辆车的缓存空间大小为80,每个内容的大小固定为20,也就是一辆车最多只能缓存4个内容
         self.cache_size = 80
         # 车辆当前请求的状态,是否发起请求
@@ -152,7 +153,7 @@ class Vehicle:
                     self.request_status_history.append(0)
 
                 # todo: 车辆请求的内容应该和用户的兴趣偏好相关,大概率请求用户感兴趣的东西,这个可以通过csv去读给定的数据
-                self.request_content = 2
+                self.request_content = random.randint(1, 10)
 
                 # 当车辆发起请求时,需要将用户请求的内容(请求内容号)记录到历史记录中
                 if self.request_status:
@@ -196,9 +197,16 @@ class Vehicle:
 
                 # 等待所有请求完成后,可以开始观察
                 remain = Vehicle.barrier.wait()
-                # 当最后一个线程执行完成时,通知bs线程
+                # 计算缓存命中率
+                if not Vehicle.cal_cache_hit:
+                    self.bs.cal_cache_hit_ration()
+                    Vehicle.cal_cache_hit = True
+
+                Vehicle.barrier.wait()
+                Vehicle.barrier.reset()
 
                 Vehicle.code_executed = False
+                Vehicle.cal_cache_hit = False
                 if remain == 0:
                     with vehicle_lock:
                         vehicle_lock.notifyAll()
@@ -408,20 +416,27 @@ class Request(threading.Thread):
 
         # 发起请求,找到请求者要请求的响应对象
         # 初始,源请求车辆选择响应的车辆发起请求
+        self.request_num += 1
         response_vehicle = self.vehicle.select_response_vehicle_as_origin()
         # 调用请求类中的Request中的request方法
         if response_vehicle is None:
+            self.vehicle.hop_count = self.request_num
+            self.vehicle.cur_response_status = False
+            self.vehicle.response_status_list.append(False)
             return
         response_result = response_vehicle.find_content(self.content_no)
         self.response_status = response_result
         while not self.response_status and self.request_num < 10:
             # 调用请求车辆的方法,找到下一个需要响应的车辆,向该车辆去请求
+            self.request_num += 1
             response_vehicle = response_vehicle.select_response_vehicle_as_relay(self.vehicle)
             # 对请求的处理结果
             if response_vehicle is None:
+                self.vehicle.hop_count = self.request_num
+                self.vehicle.cur_response_status = False
+                self.vehicle.response_status_list.append(False)
                 return
             response_result = response_vehicle.find_content(self.content_no)
-            self.request_num += 1
             self.response_status = response_result
         self.vehicle.hop_count = self.request_num
         self.vehicle.cur_response_status = response_result
@@ -444,3 +459,16 @@ class Area(threading.Thread):
                 distance = self.vehicle.cal_distance(vehicle)
                 if distance <= Vehicle.communication_radius:
                     self.vehicle.vehicle_within_area.append(vehicle)
+
+# 缓存状态随机决定,但是一辆车最多只能缓存4个内容
+def random_cache_content():
+    target_count = 4
+    result = []
+    count_1 = 0
+    while count_1 < target_count:
+        value = random.randint(0, 1)
+        result.append(value)
+        if value == 1:
+            count_1 += 1
+    result.extend([0] * (10 - len(result)))
+    return result

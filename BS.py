@@ -143,14 +143,17 @@ class BS:
 
     # 计算每个时间点的缓存命中率
     def cal_cache_hit_ration(self):
-        all_request_num = 0
-        all_response_num = 0
+        all_request = 0
+        success = 0
         for vehicle in self.vehicle_list:
             if vehicle.request_status:
-                all_request_num += 1
-            if vehicle.cur_response_status:
-                all_response_num += 1
-            self.cache_hit_ration.append(all_response_num / all_request_num)
+                all_request += 1
+            if vehicle.response_status_list[-1] == True:
+                success += 1
+        if all_request == 0:
+            self.cache_hit_ration.append("此时没有任何一辆车有请求")
+        else:
+            self.cache_hit_ration.append(success / all_request)
 
     # 线程:每到达一个时间点将车辆当前路径加入到车辆对应的历史路径序列中,并更新树结构
     # def bs_thread(self):
