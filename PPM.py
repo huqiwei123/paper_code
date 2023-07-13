@@ -121,6 +121,8 @@ class Predictor:
                         helper = {}
                         for next_ in cur.children:
                             helper[next_.value[1]] = next_.value[0]
+                        if not helper:
+                            return "No next location available"
                         max_key = max(helper.keys())
                         return helper[max_key]
                 return "current location is not find in tree"

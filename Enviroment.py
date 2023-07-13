@@ -1,10 +1,9 @@
 import random
 import threading
 import time
-import ActivityLevel
-import Vehicle
 import BS
 import Content
+import Vehicle
 
 # 创建条件变量对象
 time_lock = threading.Condition()
@@ -13,7 +12,7 @@ time_lock = threading.Condition()
 time_step = 1
 
 # 定义总的模拟时间
-total_time = 900
+total_time = 8000
 
 # 定义一个标志，用于通知其他线程模拟时间已经结束
 time_finished = False
@@ -30,13 +29,15 @@ class System:
     bs = None
     vehicle_list = []
     content_list = []
+    content_by_theme = {}
+    content_by_form = {}
 
     # 创建环境
     def __init__(self, vehicle_num: int = 10, content_num: int = 10):
         System.time_system = Time()
         System.bs = BS.BS()
-        System.vehicle_list = Space.bulk_register(vehicle_num)
         System.content_list = Space.bulk_content(content_num)
+        System.vehicle_list = Space.bulk_register(vehicle_num)
 
     # 运行环境
     def run(self):
@@ -44,6 +45,9 @@ class System:
         self.time_system.run()
         for vehicle in self.vehicle_list:
             vehicle.run()
+        # 对实例化的内容进行分类
+        System.content_by_theme = Content.Content.classify_by_theme(System.content_list)
+        System.content_by_form = Content.Content.classify_by_form(System.content_list)
 
     @staticmethod
     def reset():
@@ -122,8 +126,8 @@ class Space:
         todo: cal_throughput: 每个时间点计算环境数据中流量
     """
 
-    width = 100
-    height = 100
+    width = 4000
+    height = 3000
     cur_vehicle_num = 0
 
     # 根据车辆所在的离散位置来随机确定该离散位置中车辆的坐标
@@ -142,26 +146,26 @@ class Space:
         coordinate = []
         # 确定x轴坐标(在离散位置空间中随机取值)
         if location in ["l1", "l6", "l11", "l16", "l21"]:
-            coordinate.append(random.randrange(0, 20))
+            coordinate.append(random.randrange(0, 800))
         elif location in ["l2", "l7", "l12", "l17", "l22"]:
-            coordinate.append(random.randrange(20, 40))
+            coordinate.append(random.randrange(800, 1600))
         elif location in ["l3", "l8", "l13", "l18", "l23"]:
-            coordinate.append(random.randrange(40, 60))
+            coordinate.append(random.randrange(1600, 2400))
         elif location in ["l4", "l9", "l14", "l19", "l24"]:
-            coordinate.append(random.randrange(60, 80))
+            coordinate.append(random.randrange(2400, 3200))
         else:
-            coordinate.append(random.randrange(80, 100))
+            coordinate.append(random.randrange(3200, 4000))
         # 确定y轴坐标(在离散位置空间中随机取值)
         if location in ["l1", "l2", "l3", "l4", "l5"]:
-            coordinate.append(random.randrange(80, 100))
+            coordinate.append(random.randrange(2400, 3000))
         elif location in ["l6", "l7", "l8", "l9", "l10"]:
-            coordinate.append(random.randrange(60, 80))
+            coordinate.append(random.randrange(1800, 2400))
         elif location in ["l11", "l12", "l13", "l14", "l15"]:
-            coordinate.append(random.randrange(40, 60))
+            coordinate.append(random.randrange(1200, 1800))
         elif location in ["l16", "l17", "l18", "l19", "l20"]:
-            coordinate.append(random.randrange(20, 40))
+            coordinate.append(random.randrange(600, 1200))
         else:
-            coordinate.append(random.randrange(0, 20))
+            coordinate.append(random.randrange(0, 600))
         return coordinate
 
     # 在环境中批量生成并注册车辆

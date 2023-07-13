@@ -2,7 +2,8 @@ import random
 
 # 定义系统中所有缓存的内容
 
-content_theme = ["金融", "科技", "教育", "体育", "娱乐", "交通", "政治", "军事", "国际", "历史", "地理"]
+content_theme = ["金融", "科技", "教育", "体育", "娱乐", "交通", "政治", "军事", "国际", "历史", "地理",
+                 "新闻", "文化", "生活", "健康", "商业", "社交", "社会", "旅游", "艺术", "育儿", "心理", "法律"]
 content_form = ["文本", "视频", "音频", "图片"]
 # 存储内容集
 content_list = []
@@ -74,3 +75,27 @@ class Content:
             else:
                 form_arr.append(0)
         return form_arr
+
+    # 对内容按主题进行分类
+    @staticmethod
+    def classify_by_theme(content_gather: list):
+        classify_result = {}
+        for content in content_gather:
+            if content.theme in classify_result:
+                classify_result[content.theme].append(content)
+            else:
+                classify_result[content.theme] = []
+                classify_result[content.theme].append(content)
+        return classify_result
+
+    # 对内容按格式进行分类
+    @staticmethod
+    def classify_by_form(content_gather: list):
+        classify_result = {}
+        for content in content_gather:
+            if content.form in classify_result:
+                classify_result[content.form].append(content)
+            else:
+                classify_result[content.form] = []
+                classify_result[content.form].append(content)
+        return classify_result

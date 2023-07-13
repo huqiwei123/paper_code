@@ -148,7 +148,7 @@ class BS:
         for vehicle in self.vehicle_list:
             if vehicle.request_status:
                 all_request += 1
-            if vehicle.response_status_list[-1] == True:
+            if len(vehicle.response_status_list) != 0 and vehicle.response_status_list[-1] == True:
                 success += 1
         if all_request == 0:
             self.cache_hit_ration.append("此时没有任何一辆车有请求")
